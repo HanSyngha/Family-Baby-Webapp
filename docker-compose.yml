@@ -1,0 +1,19 @@
+version: '3.8'
+services:
+  peanut-family:
+    build: .
+    ports:
+      - "127.0.0.1:12290:2290"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TZ=Asia/Seoul
+      - KAKAO_CLIENT_ID=${KAKAO_CLIENT_ID}
+      - KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
+      - NAVER_CLIENT_ID=${NAVER_CLIENT_ID}
+      - NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - BASE_URL=${BASE_URL}
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+    restart: always
