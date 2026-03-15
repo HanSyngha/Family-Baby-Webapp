@@ -1,9 +1,8 @@
-version: '3.8'
 services:
   peanut-family:
     build: .
     ports:
-      - "127.0.0.1:12290:2290"
+      - "2290:2290"
     volumes:
       - ./data:/app/data
     environment:

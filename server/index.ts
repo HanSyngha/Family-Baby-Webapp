@@ -10,6 +10,14 @@ import { registerMediaRoutes } from './routes/media.js';
 import { registerInteractionRoutes } from './routes/interaction.js';
 import { registerUserRoutes } from './routes/user.js';
 import { registerPushRoutes } from './push.js';
+import { registerCalendarRoutes } from './routes/calendar.js';
+import { registerTodoRoutes } from './routes/todo.js';
+import { registerNoteRoutes } from './routes/note.js';
+import { registerLlmRoutes } from './routes/llm.js';
+import { registerBabyRoutes } from './routes/baby.js';
+import { registerHomeRoutes } from './routes/home.js';
+import { startHealthCheck } from './llm-health.js';
+import { startAutoSleepCheck } from './auto-sleep.js';
 
 const app = Fastify({ logger: true });
 
@@ -18,12 +26,30 @@ await app.register(fastifyCors, { origin: true, credentials: true });
 await app.register(fastifyCookie);
 await app.register(fastifyMultipart, { limits: { fileSize: 10 * 1024 * 1024 * 1024 } }); // 10GB
 
+// 캐시 제어
+app.addHook('onSend', (request, reply, _payload, done) => {
+  if (request.url.startsWith('/api/')) {
+    reply.header('Cache-Control', 'no-store');
+    reply.header('Vary', 'Cookie');
+  }
+  if (request.url === '/sw.js') {
+    reply.header('Cache-Control', 'no-cache, no-store');
+  }
+  done();
+});
+
 // API 라우트 등록
 registerAuthRoutes(app);
 registerMediaRoutes(app);
 registerInteractionRoutes(app);
 registerUserRoutes(app);
 registerPushRoutes(app);
+registerCalendarRoutes(app);
+registerTodoRoutes(app);
+registerNoteRoutes(app);
+registerLlmRoutes(app);
+registerBabyRoutes(app);
+registerHomeRoutes(app);
 
 // SPA 정적 파일 서빙 (production)
 const publicDir = path.resolve('dist/public');
@@ -43,8 +69,16 @@ if (fs.existsSync(publicDir)) {
   });
 }
 
-// 임시 파일 정리 (30분마다) - DB에 없는 고아 파일 삭제
+// 인증된 요청마다 lastActiveAt 갱신 (자동 수면 감지용)
 import db from './db.js';
+const updateLastActive = db.prepare("UPDATE users SET lastActiveAt = datetime('now', '+9 hours') WHERE id = ?");
+app.addHook('onResponse', (request, _reply, done) => {
+  const userId = (request as any).user?.userId;
+  if (userId) updateLastActive.run(userId);
+  done();
+});
+
+// 임시 파일 정리 (30분마다) - DB에 없는 고아 파일 삭제
 
 function cleanupOrphanFiles() {
   const originalsDir = path.resolve('data/originals');
@@ -86,6 +120,12 @@ function cleanupOrphanFiles() {
 }
 
 setInterval(cleanupOrphanFiles, 30 * 60 * 1000);
+
+// LLM Health Check 시작 (active config 있으면 5초 주기)
+startHealthCheck();
+
+// 자동 수면 체커 시작 (60초 주기)
+startAutoSleepCheck();
 
 const port = parseInt(process.env.PORT || '2290');
 await app.listen({ port, host: '0.0.0.0' });

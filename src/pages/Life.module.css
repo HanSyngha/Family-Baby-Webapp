@@ -1,0 +1,148 @@
+/* ============================================================
+   Life - 생활 (캘린더/할일/노트 래퍼)
+   ============================================================ */
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom) + 24px);
+}
+
+@media (min-width: 768px) {
+  .layout {
+    padding-bottom: 24px;
+  }
+}
+
+/* Page Header */
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brandBlock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pageLogo {
+  width: 34px;
+  height: 34px;
+}
+
+.brandName {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.3px;
+}
+
+.pageTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.5px;
+  margin-left: 6px;
+}
+
+/* ============================================================
+   Sub-tabs (Pill/Segment)
+   ============================================================ */
+
+.subTabs {
+  padding: 12px 20px 0;
+}
+
+.subTabTrack {
+  position: relative;
+  display: flex;
+  padding: 3px;
+  background: var(--color-bg-secondary, #f2f2f7);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.subTab {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  border-radius: 8px;
+  transition: color 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.subTab:active {
+  transform: scale(0.97);
+}
+
+.subTabActive {
+  color: var(--color-text);
+}
+
+.subTabIcon {
+  font-size: 14px;
+}
+
+.subTabIndicator {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  bottom: 3px;
+  background: var(--color-surface, #fff);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+/* Tab Content */
+.tabContent {
+  flex-direction: column;
+  flex: 1;
+  min-height: calc(100vh - 160px);
+}
+
+.tabContent > * {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+/* Galaxy Fold folded */
+@media (max-width: 320px) {
+  .subTab {
+    font-size: 12px;
+    padding: 7px 6px;
+    gap: 2px;
+  }
+
+  .subTabIcon {
+    font-size: 12px;
+  }
+
+  .pageTitle {
+    font-size: 18px;
+  }
+}

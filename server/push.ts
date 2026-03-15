@@ -35,7 +35,7 @@ export function registerPushRoutes(app: FastifyInstance) {
 }
 
 // 특정 사용자를 제외한 전체에게 알림 전송
-export function sendPushToOthers(excludeUserId: number, title: string, body: string) {
+export function sendPushToOthers(excludeUserId: number, title: string, body: string, url = '/') {
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) return;
 
   const subs = db.prepare('SELECT id, endpoint, keys FROM push_subscriptions WHERE userId != ?').all(excludeUserId) as any[];
@@ -46,9 +46,32 @@ export function sendPushToOthers(excludeUserId: number, title: string, body: str
       keys: JSON.parse(sub.keys),
     };
 
-    webPush.sendNotification(pushSubscription, JSON.stringify({ title, body, url: '/' })).catch(() => {
-      // 만료된 구독 자동 정리
+    webPush.sendNotification(pushSubscription, JSON.stringify({ title, body, url })).catch(() => {
       db.prepare('DELETE FROM push_subscriptions WHERE id = ?').run(sub.id);
     });
   }
+}
+
+// 전체 사용자에게 알림 전송 (예측 알림 등)
+export function sendPushToAll(title: string, body: string, url = '/') {
+  if (!VAPID_PUBLIC || !VAPID_PRIVATE) return;
+
+  const subs = db.prepare('SELECT id, endpoint, keys FROM push_subscriptions').all() as any[];
+
+  for (const sub of subs) {
+    const pushSubscription = {
+      endpoint: sub.endpoint,
+      keys: JSON.parse(sub.keys),
+    };
+
+    webPush.sendNotification(pushSubscription, JSON.stringify({ title, body, url })).catch(() => {
+      db.prepare('DELETE FROM push_subscriptions WHERE id = ?').run(sub.id);
+    });
+  }
+}
+
+// 유저 이름 조회 헬퍼
+export function getUserName(userId: number): string {
+  const user = db.prepare('SELECT name FROM users WHERE id = ?').get(userId) as { name: string } | undefined;
+  return user?.name || '누군가';
 }

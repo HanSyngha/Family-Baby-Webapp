@@ -1,0 +1,235 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.modal {
+  position: relative;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  width: 500px;
+  max-width: 92vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-xl);
+  animation: modalIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.closeBtn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--color-text-tertiary);
+  transition: background var(--transition), color var(--transition);
+}
+
+.closeBtn:hover {
+  background: var(--color-primary-bg);
+  color: var(--color-text);
+}
+
+.dropZone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 48px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.dropZone:hover,
+.dragOver {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+
+.dropZone p {
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.dropZone span {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.fileList {
+  margin-top: 20px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.fileItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.fileItem:last-child {
+  border-bottom: none;
+}
+
+.fileName {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileSize {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
+
+.fileStatus {
+  width: 110px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.progressWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.progressPct {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+  min-width: 32px;
+  text-align: right;
+}
+
+.progressBar {
+  flex: 1;
+  height: 5px;
+  min-width: 50px;
+  background: var(--color-border-light);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 3px;
+  transition: width 0.15s linear;
+}
+
+.done {
+  font-size: 12px;
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.error {
+  font-size: 12px;
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.errorWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.retryBtn {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.retryBtn:hover {
+  background: var(--color-primary-bg);
+}
+
+.hashing {
+  font-size: 12px;
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.duplicate {
+  font-size: 12px;
+  color: #d97706;
+  font-weight: 600;
+}
+
+.pending {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.queueInfo {
+  margin-top: 16px;
+  padding: 10px 14px;
+  background: var(--color-primary-bg);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-primary);
+}
+
+.uploadWarning {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #dc2626;
+}

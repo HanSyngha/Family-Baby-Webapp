@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticate } from '../auth.js';
 import db from '../db.js';
+import { sendPushToOthers, getUserName } from '../push.js';
 
 export function registerInteractionRoutes(app: FastifyInstance) {
   // 확인(view) 기록
@@ -23,6 +24,8 @@ export function registerInteractionRoutes(app: FastifyInstance) {
       return { liked: false };
     }
     db.prepare('INSERT INTO likes (mediaId, userId) VALUES (?, ?)').run(mediaId, userId);
+    const media = db.prepare('SELECT uploaderId, originalName FROM media WHERE id = ?').get(mediaId) as any;
+    if (media) sendPushToOthers(userId, `${getUserName(userId)}님이 좋아요`, `"${media.originalName}"에 좋아요를 눌렀어요 ❤️`, '/gallery');
     return { liked: true };
   });
 
@@ -81,6 +84,7 @@ export function registerInteractionRoutes(app: FastifyInstance) {
       WHERE c.id = ?
     `).get(result.lastInsertRowid);
 
+    sendPushToOthers(userId, `${getUserName(userId)}님이 댓글`, `"${content.trim().slice(0, 50)}" 💬`, '/gallery');
     return comment;
   });
 

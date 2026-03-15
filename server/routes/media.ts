@@ -1,14 +1,19 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticate } from '../auth.js';
 import { enqueue, getQueueStatus } from '../upload-queue.js';
-import db from '../db.js';
+import db, { peanutDb } from '../db.js';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { pipeline } from 'stream/promises';
 import { v4 as uuidv4 } from 'uuid';
-
 const DATA_DIR = path.resolve('data');
+
+function resolveDataDir(source: string | null): string {
+  return source === 'peanut'
+    ? (process.env.PEANUT_DATA_DIR || '/app/data-peanut')
+    : DATA_DIR;
+}
 
 export function registerMediaRoutes(app: FastifyInstance) {
   // 미디어 목록 (커서 기반 페이지네이션, sort 지원)
@@ -184,13 +189,15 @@ export function registerMediaRoutes(app: FastifyInstance) {
       return reply.code(403).send({ error: 'Forbidden' });
     }
 
-    // 파일 삭제
-    const originalPath = path.join(DATA_DIR, 'originals', media.filename);
-    const thumbPath = path.join(DATA_DIR, 'thumbnails', media.filename + '.webp');
-    const hlsDir = path.join(DATA_DIR, 'hls', media.filename);
-    if (fs.existsSync(originalPath)) fs.unlinkSync(originalPath);
-    if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
-    if (fs.existsSync(hlsDir)) fs.rmSync(hlsDir, { recursive: true });
+    // 외부 소스 파일은 삭제하지 않음 (원본은 다른 앱에 속함)
+    if (!media.source || media.source === 'local') {
+      const originalPath = path.join(DATA_DIR, 'originals', media.filename);
+      const thumbPath = path.join(DATA_DIR, 'thumbnails', media.filename + '.webp');
+      const hlsDir = path.join(DATA_DIR, 'hls', media.filename);
+      if (fs.existsSync(originalPath)) fs.unlinkSync(originalPath);
+      if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
+      if (fs.existsSync(hlsDir)) fs.rmSync(hlsDir, { recursive: true });
+    }
 
     db.prepare('DELETE FROM media WHERE id = ?').run(parseInt(id));
     return { ok: true };
@@ -199,10 +206,10 @@ export function registerMediaRoutes(app: FastifyInstance) {
   // 원본 파일 서빙 (Range Request 지원)
   app.get('/api/media/:id/file', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const media = db.prepare('SELECT filename, mimeType, size FROM media WHERE id = ?').get(parseInt(id)) as any;
+    const media = db.prepare('SELECT filename, mimeType, size, source FROM media WHERE id = ?').get(parseInt(id)) as any;
     if (!media) return reply.code(404).send({ error: 'Not found' });
 
-    const filePath = path.join(DATA_DIR, 'originals', media.filename);
+    const filePath = path.join(resolveDataDir(media.source), 'originals', media.filename);
     if (!fs.existsSync(filePath)) return reply.code(404).send({ error: 'File not found' });
 
     const range = request.headers.range;
@@ -233,12 +240,12 @@ export function registerMediaRoutes(app: FastifyInstance) {
   });
 
   // 썸네일 서빙
-  app.get('/api/media/:id/thumb', async (request, reply) => {
+  app.get('/api/media/:id/thumb', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const media = db.prepare('SELECT filename FROM media WHERE id = ?').get(parseInt(id)) as any;
+    const media = db.prepare('SELECT filename, source FROM media WHERE id = ?').get(parseInt(id)) as any;
     if (!media) return reply.code(404).send({ error: 'Not found' });
 
-    const thumbPath = path.join(DATA_DIR, 'thumbnails', media.filename + '.webp');
+    const thumbPath = path.join(resolveDataDir(media.source), 'thumbnails', media.filename + '.webp');
     if (!fs.existsSync(thumbPath)) return reply.code(404).send({ error: 'Thumbnail not found' });
 
     reply.headers({
@@ -251,10 +258,10 @@ export function registerMediaRoutes(app: FastifyInstance) {
   // HLS playlist 서빙
   app.get('/api/media/:id/hls/playlist.m3u8', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const media = db.prepare('SELECT filename FROM media WHERE id = ?').get(parseInt(id)) as any;
+    const media = db.prepare('SELECT filename, source FROM media WHERE id = ?').get(parseInt(id)) as any;
     if (!media) return reply.code(404).send({ error: 'Not found' });
 
-    const playlistPath = path.join(DATA_DIR, 'hls', media.filename, 'playlist.m3u8');
+    const playlistPath = path.join(resolveDataDir(media.source), 'hls', media.filename, 'playlist.m3u8');
     if (!fs.existsSync(playlistPath)) return reply.code(404).send({ error: 'HLS not available' });
 
     reply.headers({
@@ -270,10 +277,10 @@ export function registerMediaRoutes(app: FastifyInstance) {
     if (segment.includes('/') || segment.includes('\\') || segment.includes('..')) {
       return reply.code(400).send({ error: 'Invalid segment' });
     }
-    const media = db.prepare('SELECT filename FROM media WHERE id = ?').get(parseInt(id)) as any;
+    const media = db.prepare('SELECT filename, source FROM media WHERE id = ?').get(parseInt(id)) as any;
     if (!media) return reply.code(404).send({ error: 'Not found' });
 
-    const segmentPath = path.join(DATA_DIR, 'hls', media.filename, segment);
+    const segmentPath = path.join(resolveDataDir(media.source), 'hls', media.filename, segment);
     if (!fs.existsSync(segmentPath)) return reply.code(404).send({ error: 'Segment not found' });
 
     const contentType = segment.endsWith('.ts') ? 'video/mp2t' : 'video/mp4';
@@ -289,19 +296,85 @@ export function registerMediaRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string };
     const userId = (request as any).user.userId;
 
-    const media = db.prepare('SELECT filename, originalName, mimeType, size FROM media WHERE id = ?').get(parseInt(id)) as any;
+    const media = db.prepare('SELECT filename, originalName, mimeType, size, source FROM media WHERE id = ?').get(parseInt(id)) as any;
     if (!media) return reply.code(404).send({ error: 'Not found' });
 
     // 다운로드 기록
     db.prepare('INSERT OR IGNORE INTO downloads (mediaId, userId) VALUES (?, ?)').run(parseInt(id), userId);
 
-    const filePath = path.join(DATA_DIR, 'originals', media.filename);
+    const filePath = path.join(resolveDataDir(media.source), 'originals', media.filename);
     reply.headers({
       'Content-Type': media.mimeType,
       'Content-Disposition': `attachment; filename="${encodeURIComponent(media.originalName)}"`,
       'Content-Length': media.size,
     });
     return reply.send(fs.createReadStream(filePath));
+  });
+
+  // 땅콩땅콩땅콩콩땅(old app)으로 미디어 게시 (파일 복사 없이 DB 레코드만 추가)
+  app.post('/api/media/copy-to-peanut', { preHandler: authenticate }, async (request, reply) => {
+    if (!peanutDb) return reply.code(400).send({ error: '땅콩땅콩땅콩콩땅 연결 불가' });
+
+    const { ids } = request.body as { ids: number[] };
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return reply.code(400).send({ error: '선택된 미디어 없음' });
+    }
+    if (ids.length > 100) {
+      return reply.code(400).send({ error: '최대 100개까지 가능' });
+    }
+
+    const { userId } = (request as any).user;
+
+    // 유저 매핑: provider+providerId로 old app 유저 찾기
+    const familyUser = db.prepare('SELECT provider, providerId, name FROM users WHERE id = ?')
+      .get(userId) as { provider: string; providerId: string; name: string } | undefined;
+    if (!familyUser) return reply.code(400).send({ error: '유저 없음' });
+
+    const peanutUser = peanutDb.prepare('SELECT id FROM users WHERE provider = ? AND providerId = ?')
+      .get(familyUser.provider, familyUser.providerId) as { id: number } | undefined;
+    if (!peanutUser) {
+      return reply.code(400).send({ error: '땅콩땅콩땅콩콩땅에 계정이 없습니다. 먼저 로그인해주세요.' });
+    }
+
+    let copied = 0;
+    let duplicates = 0;
+    const errors: string[] = [];
+
+    for (const id of ids) {
+      let media: any;
+      try {
+        media = db.prepare('SELECT * FROM media WHERE id = ?').get(id);
+        if (!media) { errors.push(`ID ${id} 없음`); continue; }
+
+        // 해시로 중복 체크
+        if (media.hash) {
+          const existing = peanutDb.prepare('SELECT id FROM media WHERE hash = ?').get(media.hash);
+          if (existing) { duplicates++; continue; }
+        }
+
+        // 원본 파일 확인 (로컬 또는 peanut 소스)
+        const srcDir = resolveDataDir(media.source);
+        const srcPath = path.join(srcDir, 'originals', media.filename);
+        if (!fs.existsSync(srcPath)) { errors.push(`${media.originalName}: 파일 없음`); continue; }
+
+        // DB 레코드만 추가 (source='family' → P1이 P2 볼륨에서 서빙)
+        const nowKst = new Date(Date.now() + 9 * 3600000).toISOString().replace('T', ' ').slice(0, 19);
+        peanutDb.prepare(`
+          INSERT INTO media (uploaderId, filename, originalName, mimeType, type, size, width, height, duration, hash, createdAt, uploadedAt, source)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'family')
+        `).run(
+          peanutUser.id, media.filename, media.originalName, media.mimeType, media.type,
+          media.size, media.width, media.height, media.duration, media.hash,
+          media.createdAt, nowKst,
+        );
+
+        copied++;
+      } catch (err) {
+        errors.push(`${media?.originalName || id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    return { copied, duplicates, errors };
   });
 }
 

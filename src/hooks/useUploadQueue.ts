@@ -70,7 +70,7 @@ export function useUploadQueue(onUploaded: () => void) {
         uploadingRef.current = false;
         setFiles(prev => [...prev]);
       });
-  }, [files.length, files.filter(f => f.status === 'done' || f.status === 'error' || f.status === 'duplicate').length]);
+  }, [files.length, onUploaded, files.filter(f => f.status === 'done' || f.status === 'error' || f.status === 'duplicate').length]);
 
   // beforeunload
   useEffect(() => {

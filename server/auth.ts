@@ -8,27 +8,53 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:2230';
 interface JwtPayload {
   userId: number;
   role: string;
+  iat?: number;
+  exp?: number;
 }
 
-// JWT 검증 데코레이터
+// 인증 이벤트 로깅 (IP/기기별 세션 추적)
+function logAuth(event: string, request: FastifyRequest, extra: Record<string, any> = {}) {
+  const ip = request.headers['x-real-ip'] || request.headers['x-forwarded-for'] || request.ip;
+  const ua = request.headers['user-agent'] || 'unknown';
+  const mode = request.headers['x-app-mode'] || 'none';
+  const cookies = Object.keys(request.cookies || {}).join(',');
+  console.log(`[AUTH] ${event} | ip=${ip} | mode=${mode} | ua=${ua.slice(0, 80)} | cookies=[${cookies}]`, JSON.stringify(extra));
+}
+
+// 요청의 앱 모드에 따라 쿠키 이름 결정 (PWA: fpauth, 브라우저: fauth)
+// P1(peanut)과 쿠키 충돌 방지를 위해 'f' prefix 사용
+function getTokenCookieName(request: FastifyRequest): string {
+  const mode = request.headers['x-app-mode'];
+  return mode === 'pwa' ? 'fpauth' : 'fauth';
+}
+
+// JWT 검증
 export function authenticate(request: FastifyRequest, reply: FastifyReply, done: () => void) {
-  const token = request.cookies?.token;
+  const cookieName = getTokenCookieName(request);
+  const token = request.headers['x-app-mode']
+    ? request.cookies?.[cookieName]
+    : (request.cookies?.fpauth || request.cookies?.fauth);
   if (!token) {
     reply.code(401).send({ error: 'Unauthorized' });
     return;
   }
   try {
     const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    // 차단된 유저 체크
-    const user = db.prepare('SELECT banned FROM users WHERE id = ?').get(payload.userId) as any;
+    const user = db.prepare('SELECT id, name, banned FROM users WHERE id = ?').get(payload.userId) as any;
     if (user?.banned) {
-      reply.clearCookie('token', { path: '/' }).code(403).send({ error: 'Banned' });
+      logAuth('BANNED', request, { userId: payload.userId });
+      reply.clearCookie(cookieName, { path: '/' }).code(403).send({ error: 'Banned' });
       return;
+    }
+    if (request.url.startsWith('/api/auth/me')) {
+      const iat = payload.iat ? new Date(payload.iat * 1000).toISOString() : '?';
+      logAuth('ME', request, { userId: payload.userId, name: user?.name, cookie: cookieName, issuedAt: iat });
     }
     (request as any).user = payload;
     done();
   } catch {
-    reply.code(401).send({ error: 'Invalid token' });
+    logAuth('INVALID_TOKEN', request, { cookie: cookieName });
+    reply.clearCookie(cookieName, { path: '/' }).code(401).send({ error: 'Invalid token' });
     return;
   }
 }
@@ -54,6 +80,17 @@ function upsertUser(provider: string, providerId: string, name: string, profileI
   return { id: result.lastInsertRowid as number, role };
 }
 
+function getCallbackCookieName(request: FastifyRequest): string {
+  return request.cookies?.app_mode === 'pwa' ? 'fpauth' : 'fauth';
+}
+
+const COOKIE_OPTS = (secure: boolean) => ({
+  path: '/' as const,
+  httpOnly: true,
+  secure,
+  sameSite: 'lax' as const,
+});
+
 export function registerAuthRoutes(app: FastifyInstance) {
   // --- 카카오 ---
   app.get('/api/auth/kakao', async (_request, reply) => {
@@ -72,7 +109,6 @@ export function registerAuthRoutes(app: FastifyInstance) {
       const clientSecret = process.env.KAKAO_CLIENT_SECRET!;
       const redirectUri = `${BASE_URL}/api/auth/kakao/callback`;
 
-      // 토큰 교환
       const tokenRes = await fetch('https://kauth.kakao.com/oauth/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -87,7 +123,6 @@ export function registerAuthRoutes(app: FastifyInstance) {
       const tokenData = await tokenRes.json() as any;
       if (!tokenData.access_token) return reply.redirect('/login?error=token_failed');
 
-      // 사용자 정보
       const userRes = await fetch('https://kapi.kakao.com/v2/user/me', {
         headers: { Authorization: `Bearer ${tokenData.access_token}` },
       });
@@ -99,70 +134,17 @@ export function registerAuthRoutes(app: FastifyInstance) {
 
       const user = upsertUser('kakao', String(userData.id), name, profileImage);
       const token = generateToken(user.id, user.role);
+      const cookieName = getCallbackCookieName(request);
+      const secure = BASE_URL.startsWith('https');
+
+      logAuth('LOGIN', request, { provider: 'kakao', userId: user.id, name, cookie: cookieName });
 
       reply
-        .setCookie('token', token, {
-          path: '/',
-          httpOnly: true,
-          secure: BASE_URL.startsWith('https'),
-          sameSite: 'lax',
-          maxAge: 4 * 60 * 60,
-        })
+        .setCookie(cookieName, token, COOKIE_OPTS(secure))
+        .clearCookie('app_mode', { path: '/' })
         .redirect('/');
     } catch (err) {
       request.log.error(err, 'Kakao OAuth failed');
-      reply.redirect('/login?error=oauth_failed');
-    }
-  });
-
-  // --- 네이버 ---
-  app.get('/api/auth/naver', async (_request, reply) => {
-    const clientId = process.env.NAVER_CLIENT_ID;
-    const redirectUri = `${BASE_URL}/api/auth/naver/callback`;
-    const state = Math.random().toString(36).substring(2);
-    const url = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
-    reply.redirect(url);
-  });
-
-  app.get('/api/auth/naver/callback', async (request, reply) => {
-    try {
-      const { code, state } = request.query as { code: string; state: string };
-      if (!code) return reply.redirect('/login?error=no_code');
-
-      const clientId = process.env.NAVER_CLIENT_ID!;
-      const clientSecret = process.env.NAVER_CLIENT_SECRET!;
-      const redirectUri = `${BASE_URL}/api/auth/naver/callback`;
-
-      // 토큰 교환
-      const tokenRes = await fetch(`https://nid.naver.com/oauth2.0/token?grant_type=authorization_code&client_id=${clientId}&client_secret=${clientSecret}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}&state=${state}`);
-      const tokenData = await tokenRes.json() as any;
-      if (!tokenData.access_token) return reply.redirect('/login?error=token_failed');
-
-      // 사용자 정보
-      const userRes = await fetch('https://openapi.naver.com/v1/nid/me', {
-        headers: { Authorization: `Bearer ${tokenData.access_token}` },
-      });
-      const userData = await userRes.json() as any;
-      if (!userData.response?.id) return reply.redirect('/login?error=user_info_failed');
-
-      const profile = userData.response;
-      const name = profile.name || profile.nickname || '사용자';
-      const profileImage = profile.profile_image || null;
-
-      const user = upsertUser('naver', profile.id, name, profileImage);
-      const token = generateToken(user.id, user.role);
-
-      reply
-        .setCookie('token', token, {
-          path: '/',
-          httpOnly: true,
-          secure: BASE_URL.startsWith('https'),
-          sameSite: 'lax',
-          maxAge: 4 * 60 * 60,
-        })
-        .redirect('/');
-    } catch (err) {
-      request.log.error(err, 'Naver OAuth failed');
       reply.redirect('/login?error=oauth_failed');
     }
   });
@@ -175,7 +157,13 @@ export function registerAuthRoutes(app: FastifyInstance) {
   });
 
   // --- 로그아웃 ---
-  app.post('/api/auth/logout', async (_request, reply) => {
-    reply.clearCookie('token', { path: '/' }).send({ ok: true });
+  app.post('/api/auth/logout', async (request, reply) => {
+    reply
+      .clearCookie('fauth', { path: '/' })
+      .clearCookie('fpauth', { path: '/' })
+      .clearCookie('auth', { path: '/' })
+      .clearCookie('pauth', { path: '/' })
+      .clearCookie('token', { path: '/' })
+      .send({ ok: true });
   });
 }

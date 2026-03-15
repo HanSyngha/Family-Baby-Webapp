@@ -1,5 +1,6 @@
 .shell {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--color-bg);
@@ -117,15 +118,61 @@
   color: var(--color-danger);
 }
 
+.installBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  background: var(--color-primary);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition);
+}
+
+.installBtn:hover {
+  background: var(--color-primary-hover);
+}
+
+/* Mobile Install Banner */
+.installBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 99;
+}
+
+.installBanner button {
+  padding: 5px 14px;
+  background: white;
+  color: var(--color-primary);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
 /* ============================================================
    Content
    ============================================================ */
 
 .content {
   flex: 1;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ============================================================
@@ -165,21 +212,35 @@
   color: var(--color-primary);
 }
 
+.tabItem[target="_blank"] {
+  text-decoration: none;
+}
+
 /* ============================================================
    Desktop: >=768px
    ============================================================ */
 
 @media (min-width: 768px) {
+  .shell {
+    flex-direction: row;
+  }
+
   .sidebar {
     display: flex;
   }
 
   .content {
+    height: 100vh;
+    height: 100dvh;
     margin-left: var(--sidebar-width);
     padding-bottom: 0;
   }
 
   .bottomTab {
+    display: none;
+  }
+
+  .installBanner {
     display: none;
   }
 }

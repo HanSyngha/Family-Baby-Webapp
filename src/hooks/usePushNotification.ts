@@ -11,7 +11,13 @@ export function usePushNotification(isLoggedIn: boolean) {
       setState('unsupported');
       return;
     }
-    checkStatus().then(setState);
+    checkStatus().then(s => {
+      setState(s);
+      // 최초 접속시 자동 구독 (off 상태이고 아직 거부하지 않은 경우)
+      if (s === 'off' && Notification.permission !== 'denied') {
+        autoSubscribe().then(ok => { if (ok) setState('on'); });
+      }
+    });
   }, [isLoggedIn]);
 
   const toggle = useCallback(async () => {
@@ -64,6 +70,37 @@ export function usePushNotification(isLoggedIn: boolean) {
   }, [state]);
 
   return { pushState: state, togglePush: toggle };
+}
+
+async function autoSubscribe(): Promise<boolean> {
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    const { key } = await fetch('/api/push/vapid-key').then(r => r.json());
+    if (!key) return false;
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return false;
+
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(key) as BufferSource,
+    });
+
+    await fetch('/api/push/subscribe', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        endpoint: sub.endpoint,
+        keys: {
+          p256dh: arrayBufferToBase64(sub.getKey('p256dh')!),
+          auth: arrayBufferToBase64(sub.getKey('auth')!),
+        },
+      }),
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function checkStatus(): Promise<PushState> {

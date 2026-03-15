@@ -1,0 +1,551 @@
+/* ============================================================
+   Home - Dashboard
+   ============================================================ */
+
+.layout {
+  min-height: 100%;
+  padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom) + 24px);
+}
+
+@media (min-width: 768px) {
+  .layout {
+    padding-bottom: 24px;
+  }
+}
+
+/* Page Header */
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brandBlock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pageLogo {
+  width: 34px;
+  height: 34px;
+}
+
+.brandName {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.3px;
+}
+
+.pageTitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.5px;
+  margin-left: 6px;
+}
+
+.greeting {
+  flex-shrink: 0;
+}
+
+.userAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.userAvatarFallback {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* ============================================================
+   Cards (Dashboard Sections)
+   ============================================================ */
+
+.card {
+  margin: 12px 16px 0;
+  padding: 16px;
+  background: var(--color-surface, #fff);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  animation: fadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card:active {
+  transform: scale(0.98);
+}
+
+.cardStagger1 { animation-delay: 0s; }
+.cardStagger2 { animation-delay: 0.05s; }
+.cardStagger3 { animation-delay: 0.1s; }
+.cardStagger4 { animation-delay: 0.15s; }
+.cardStagger5 { animation-delay: 0.2s; }
+.cardStagger6 { animation-delay: 0.25s; }
+
+/* ============================================================
+   Quick Breast Feeding
+   ============================================================ */
+
+.quickFeeding {
+  margin: 12px 16px 0;
+  animation: fadeUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.quickFeedingInCard {
+  margin-bottom: 12px;
+}
+
+.quickFeedingBtns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.quickFeedingBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 12px;
+  background: var(--color-surface, #fff);
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+.quickFeedingBtn:active {
+  transform: scale(0.96);
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.quickFeedingIcon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.quickFeedingLabel {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.3px;
+}
+
+/* Active timer state */
+.quickFeedingActive {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.08), rgba(0, 122, 255, 0.04));
+  border: 1.5px solid var(--color-primary);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.quickFeedingActive:active {
+  transform: scale(0.98);
+}
+
+.quickFeedingPulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  flex-shrink: 0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.quickFeedingText {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-align: left;
+}
+
+.quickFeedingArrow {
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--color-primary);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.cardIcon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.3px;
+}
+
+.cardBadge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-bg, rgba(0, 122, 255, 0.08));
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.cardArrow {
+  margin-left: auto;
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--color-text-tertiary);
+}
+
+.cardEmpty {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  text-align: center;
+  padding: 8px 0;
+}
+
+/* ============================================================
+   Birthday Section
+   ============================================================ */
+
+.birthdayList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.birthdayItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--color-bg-secondary, #f8f8fa);
+  border-radius: 12px;
+}
+
+.birthdayEmoji {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.birthdayInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.birthdayName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.birthdayDate {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.birthdayDday {
+  flex-shrink: 0;
+}
+
+.birthdayToday {
+  font-size: 13px;
+  font-weight: 700;
+  color: #FF3B30;
+}
+
+.birthdayCount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+/* ============================================================
+   Baby Summary
+   ============================================================ */
+
+.babyStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.babyStat {
+  text-align: center;
+  padding: 10px 4px;
+  background: var(--color-bg-secondary, #f8f8fa);
+  border-radius: 12px;
+}
+
+.babyStatValue {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+
+.babyStatUnit {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.babyStatLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+}
+
+.babyRecent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.babyRecentItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.babyRecentIcon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.babyRecentText {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.predictions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.predictionChip {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text);
+  background: var(--color-primary-bg, rgba(0, 122, 255, 0.08));
+  padding: 6px 10px;
+  border-radius: 10px;
+  line-height: 1.3;
+}
+
+.predictionChip strong {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* ============================================================
+   Events
+   ============================================================ */
+
+.eventList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.eventItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--color-bg-secondary, #f8f8fa);
+  border-radius: 10px;
+}
+
+.eventDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.eventTitle {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eventTime {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.eventDate {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Todo Summary
+   ============================================================ */
+
+.todoStats {
+  display: flex;
+  gap: 12px;
+}
+
+.todoStat {
+  flex: 1;
+  text-align: center;
+  padding: 12px 8px;
+  background: var(--color-bg-secondary, #f8f8fa);
+  border-radius: 12px;
+}
+
+.todoStatOverdue {
+  background: #FF3B3010;
+}
+
+.todoStatValue {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.todoStatOverdue .todoStatValue {
+  color: #FF3B30;
+}
+
+.todoStatLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+  margin-top: 2px;
+}
+
+/* ============================================================
+   Loading / Empty
+   ============================================================ */
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 60px;
+}
+
+.loadingSpinner {
+  width: 24px;
+  height: 24px;
+  border: 2.5px solid var(--color-border-light);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.emptyText {
+  text-align: center;
+  padding: 40px 20px;
+  font-size: 14px;
+  color: var(--color-text-tertiary);
+}
+
+/* ============================================================
+   Keyframes
+   ============================================================ */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+/* Galaxy Fold */
+@media (max-width: 320px) {
+  .pageTitle { font-size: 18px; }
+  .card { margin: 8px 12px 0; padding: 12px; }
+  .babyStatValue { font-size: 18px; }
+  .birthdayItem { padding: 6px 8px; }
+  .quickFeeding { margin: 8px 12px 0; }
+  .quickFeedingBtn { padding: 10px 6px; gap: 4px; }
+  .quickFeedingLabel { font-size: 12px; white-space: nowrap; }
+  .quickFeedingIcon { font-size: 15px; }
+  .quickFeedingBtns { gap: 6px; }
+}
+
+/* Tablet+ */
+@media (min-width: 768px) {
+  .layout {
+    max-width: 720px;
+    margin: 0 auto;
+    padding-bottom: 24px;
+  }
+}
+
+/* TV */
+@media (min-width: 1200px) {
+  .layout {
+    max-width: 900px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

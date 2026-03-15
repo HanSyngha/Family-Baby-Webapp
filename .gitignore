@@ -3,3 +3,9 @@ dist/
 data/
 .env
 *.log
+.playwright-mcp/
+
+# Root-level screenshots (not public assets)
+/*.png
+/*.jpg
+/*.ico
