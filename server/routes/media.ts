@@ -384,6 +384,48 @@ export function registerMediaRoutes(app: FastifyInstance) {
 
     return { copied, duplicates, errors };
   });
+
+  // ===== 갤러리 이벤트 자막 (날짜 범위 → 'N일차' 자동) =====
+  app.get('/api/gallery-events', { preHandler: authenticate }, async () => {
+    return db.prepare('SELECT id, startDate, endDate, title, color FROM gallery_events ORDER BY startDate DESC').all();
+  });
+
+  app.post('/api/gallery-events', { preHandler: authenticate }, async (request, reply) => {
+    const { userId, role } = (request as any).user;
+    if (role !== 'master') return reply.code(403).send({ error: '관리자만 가능합니다' });
+    let { startDate, endDate, title, color } = request.body as { startDate: string; endDate: string; title: string; color?: string };
+    if (!title?.trim()) return reply.code(400).send({ error: '제목을 입력하세요' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      return reply.code(400).send({ error: '날짜 형식 오류' });
+    }
+    if (endDate < startDate) [startDate, endDate] = [endDate, startDate];
+    const r = db.prepare('INSERT INTO gallery_events (startDate, endDate, title, color, createdBy) VALUES (?, ?, ?, ?, ?)')
+      .run(startDate, endDate, title.trim(), color || '#E8943A', userId);
+    return db.prepare('SELECT id, startDate, endDate, title, color FROM gallery_events WHERE id = ?').get(r.lastInsertRowid);
+  });
+
+  app.patch('/api/gallery-events/:id', { preHandler: authenticate }, async (request, reply) => {
+    if ((request as any).user.role !== 'master') return reply.code(403).send({ error: '관리자만 가능합니다' });
+    const { id } = request.params as { id: string };
+    let { startDate, endDate, title, color } = request.body as { startDate: string; endDate: string; title: string; color?: string };
+    if (!title?.trim()) return reply.code(400).send({ error: '제목을 입력하세요' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      return reply.code(400).send({ error: '날짜 형식 오류' });
+    }
+    if (endDate < startDate) [startDate, endDate] = [endDate, startDate];
+    const ev = db.prepare('SELECT id FROM gallery_events WHERE id = ?').get(parseInt(id));
+    if (!ev) return reply.code(404).send({ error: 'Not found' });
+    db.prepare('UPDATE gallery_events SET startDate = ?, endDate = ?, title = ?, color = ? WHERE id = ?')
+      .run(startDate, endDate, title.trim(), color || '#E8943A', parseInt(id));
+    return db.prepare('SELECT id, startDate, endDate, title, color FROM gallery_events WHERE id = ?').get(parseInt(id));
+  });
+
+  app.delete('/api/gallery-events/:id', { preHandler: authenticate }, async (request, reply) => {
+    if ((request as any).user.role !== 'master') return reply.code(403).send({ error: '관리자만 가능합니다' });
+    const { id } = request.params as { id: string };
+    db.prepare('DELETE FROM gallery_events WHERE id = ?').run(parseInt(id));
+    return { ok: true };
+  });
 }
 
 const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB
