@@ -162,6 +162,7 @@ export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sor
           event={eventForDate(editDate)}
           onSaved={() => { refetchEvents(); setEditDate(null); }}
           onClose={() => setEditDate(null)}
+          onShareToPeanut={async (id) => { await api.applyEventToPeanut(id); }}
         />
       )}
     </div>

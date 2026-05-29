@@ -426,6 +426,29 @@ export function registerMediaRoutes(app: FastifyInstance) {
     db.prepare('DELETE FROM gallery_events WHERE id = ?').run(parseInt(id));
     return { ok: true };
   });
+
+  // 신규 앱 → 구 앱(땅콩땅콩땅콩콩땅) 단방향 적용 (복사本)
+  app.post('/api/gallery-events/:id/apply-to-peanut', { preHandler: authenticate }, async (request, reply) => {
+    if ((request as any).user.role !== 'master') return reply.code(403).send({ error: '관리자만 가능합니다' });
+    if (!peanutDb) return reply.code(400).send({ error: '땅콩땅콩 연결 불가' });
+    const { id } = request.params as { id: string };
+    const ev = db.prepare('SELECT startDate, endDate, title, color FROM gallery_events WHERE id = ?').get(parseInt(id)) as any;
+    if (!ev) return reply.code(404).send({ error: 'Not found' });
+    peanutDb.exec(`CREATE TABLE IF NOT EXISTS gallery_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, startDate TEXT NOT NULL, endDate TEXT NOT NULL,
+      title TEXT NOT NULL, color TEXT NOT NULL DEFAULT '#946b2d', createdBy INTEGER,
+      createdAt TEXT DEFAULT (datetime('now', '+9 hours'))
+    )`);
+    const existing = peanutDb.prepare('SELECT id FROM gallery_events WHERE startDate = ? AND endDate = ? AND title = ?')
+      .get(ev.startDate, ev.endDate, ev.title) as any;
+    if (existing) {
+      peanutDb.prepare('UPDATE gallery_events SET color = ? WHERE id = ?').run(ev.color, existing.id);
+    } else {
+      peanutDb.prepare('INSERT INTO gallery_events (startDate, endDate, title, color, createdBy) VALUES (?, ?, ?, ?, NULL)')
+        .run(ev.startDate, ev.endDate, ev.title, ev.color);
+    }
+    return { ok: true };
+  });
 }
 
 const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB

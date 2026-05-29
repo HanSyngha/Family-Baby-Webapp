@@ -8,24 +8,28 @@ interface Props {
   event: GalleryEvent | null;   // 그 날짜를 덮는 기존 이벤트 (없으면 신규)
   onSaved: () => void;
   onClose: () => void;
-  onApply?: (id: number) => Promise<void>;  // 구 앱에서만: 신규앱 적용
+  onApply?: (id: number) => Promise<void>;       // 구 앱에서만: 신규앱 적용 버튼
+  onShareToPeanut?: (id: number) => Promise<void>; // 신규 앱에서만: 땅콩땅콩 공유 체크박스
 }
 
-export default function EventModal({ date, event, onSaved, onClose, onApply }: Props) {
+export default function EventModal({ date, event, onSaved, onClose, onApply, onShareToPeanut }: Props) {
   const [title, setTitle] = useState(event?.title ?? '');
   const [startDate, setStart] = useState(event?.startDate ?? date);
   const [endDate, setEnd] = useState(event?.endDate ?? date);
   const [color, setColor] = useState(event?.color ?? COLORS[0]);
   const [busy, setBusy] = useState(false);
   const [applied, setApplied] = useState(false);
+  const [shareToPeanut, setShareToPeanut] = useState(false);
 
   const save = async () => {
     if (!title.trim() || busy) return;
     setBusy(true);
     try {
       const input = { title: title.trim(), startDate, endDate, color };
+      let savedId = event?.id;
       if (event) await api.updateGalleryEvent(event.id, input);
-      else await api.createGalleryEvent(input);
+      else { const created = await api.createGalleryEvent(input); savedId = created.id; }
+      if (shareToPeanut && savedId && onShareToPeanut) await onShareToPeanut(savedId);
       onSaved();
     } catch { setBusy(false); }
   };
@@ -75,6 +79,13 @@ export default function EventModal({ date, event, onSaved, onClose, onApply }: P
             <button key={c} onClick={() => setColor(c)} style={{ width: 30, height: 30, borderRadius: '50%', background: c, border: color === c ? '3px solid var(--color-text)' : '3px solid transparent', boxShadow: 'var(--shadow-sm)', transition: 'transform 0.12s', transform: color === c ? 'scale(1.12)' : 'scale(1)' }} />
           ))}
         </div>
+
+        {onShareToPeanut && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, padding: '12px 14px', borderRadius: 12, background: 'var(--color-bg-secondary)', cursor: 'pointer' }}>
+            <input type="checkbox" checked={shareToPeanut} onChange={e => setShareToPeanut(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--color-primary)' }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>땅콩땅콩땅콩콩땅에도 같은 자막 공유</span>
+          </label>
+        )}
 
         {event && onApply && (
           <button onClick={apply} disabled={busy || applied} style={{ width: '100%', marginTop: 16, padding: 12, borderRadius: 12, background: applied ? 'var(--color-success)' : 'var(--color-primary-bg)', color: applied ? '#fff' : 'var(--color-primary)', fontSize: 14, fontWeight: 700 }}>

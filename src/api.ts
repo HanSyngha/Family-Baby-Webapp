@@ -473,6 +473,7 @@ export const api = {
   createGalleryEvent: (e: GalleryEventInput) => request<GalleryEvent>('/gallery-events', { method: 'POST', body: JSON.stringify(e) }),
   updateGalleryEvent: (id: number, e: GalleryEventInput) => request<GalleryEvent>(`/gallery-events/${id}`, { method: 'PATCH', body: JSON.stringify(e) }),
   deleteGalleryEvent: (id: number) => request<{ ok: boolean }>(`/gallery-events/${id}`, { method: 'DELETE' }),
+  applyEventToPeanut: (id: number) => request<{ ok: boolean }>(`/gallery-events/${id}/apply-to-peanut`, { method: 'POST' }),
   copyToPeanut: (ids: number[]) =>
     request<{ copied: number; duplicates: number; errors: string[] }>(
       '/media/copy-to-peanut',

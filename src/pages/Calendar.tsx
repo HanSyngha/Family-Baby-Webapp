@@ -93,6 +93,7 @@ interface EventFormData {
   endDate: string;
   endTime: string;
   allDay: boolean;
+  point: boolean;
   color: string;
   location: string;
   isPrivate: boolean;
@@ -117,6 +118,7 @@ function makeDefaultForm(selectedDate?: string): EventFormData {
     endDate: dateStr,
     endTime: toLocalTimeStr(endHour),
     allDay: false,
+    point: false,
     color: EVENT_COLORS[0],
     location: '',
     isPrivate: false,
@@ -137,6 +139,7 @@ function eventToForm(ev: CalendarEvent): EventFormData {
     endDate: toLocalDateStr(end),
     endTime: toLocalTimeStr(end),
     allDay: ev.allDay,
+    point: !ev.allDay && start.getTime() === end.getTime(),
     color: ev.color || EVENT_COLORS[0],
     location: ev.location || '',
     isPrivate: ev.isPrivate,
@@ -335,9 +338,11 @@ export default function Calendar({ user, embedded }: Props) {
       const startAt = form.allDay
         ? `${form.startDate} 00:00:00`
         : `${form.startDate} ${form.startTime}:00`;
-      const endAt = form.allDay
-        ? `${form.endDate} 23:59:59`
-        : `${form.endDate} ${form.endTime}:00`;
+      const endAt = form.point
+        ? startAt
+        : form.allDay
+          ? `${form.endDate} 23:59:59`
+          : `${form.endDate} ${form.endTime}:00`;
 
       const payload = {
         title: form.title.trim(),
@@ -569,7 +574,7 @@ export default function Calendar({ user, embedded }: Props) {
                           )}
                         </div>
                         <div className={styles.eventTime}>
-                          {ev.allDay ? '종일' : `${formatTimeKR(ev.startAt)} — ${formatTimeKR(ev.endAt)}`}
+                          {ev.allDay ? '종일' : ev.startAt === ev.endAt ? formatTimeKR(ev.startAt) : `${formatTimeKR(ev.startAt)} — ${formatTimeKR(ev.endAt)}`}
                         </div>
                         {ev.location && (
                           <div className={styles.eventLocation}>
@@ -641,7 +646,7 @@ export default function Calendar({ user, embedded }: Props) {
                         ? formatDateKR(viewingEvent.startAt)
                         : `${formatDateKR(viewingEvent.startAt)} ${formatTimeKR(viewingEvent.startAt)}`}
                     </div>
-                    {!viewingEvent.allDay && (
+                    {!viewingEvent.allDay && viewingEvent.startAt !== viewingEvent.endAt && (
                       <div className={styles.detailRowSub}>
                         ~ {toLocalDateStr(new Date(viewingEvent.startAt)) !== toLocalDateStr(new Date(viewingEvent.endAt))
                           ? formatDateKR(viewingEvent.endAt) + ' '
@@ -841,7 +846,23 @@ export default function Calendar({ user, embedded }: Props) {
                   </span>
                   <div
                     className={`${styles.toggle} ${form.allDay ? styles.toggleActive : ''}`}
-                    onClick={() => updateForm('allDay', !form.allDay)}
+                    onClick={() => { const next = !form.allDay; updateForm('allDay', next); if (next) updateForm('point', false); }}
+                  >
+                    <div className={styles.toggleKnob} />
+                  </div>
+                </div>
+                <div className={styles.formRow}>
+                  <span className={styles.formRowLabel}>
+                    <span className={styles.formRowIcon}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+                      </svg>
+                    </span>
+                    단발성 (시작 시각만)
+                  </span>
+                  <div
+                    className={`${styles.toggle} ${form.point ? styles.toggleActive : ''}`}
+                    onClick={() => { const next = !form.point; updateForm('point', next); if (next) updateForm('allDay', false); }}
                   >
                     <div className={styles.toggleKnob} />
                   </div>
@@ -866,6 +887,7 @@ export default function Calendar({ user, embedded }: Props) {
                       />
                     )}
                   </div>
+                  {!form.point && (
                   <div className={styles.dateTimeField}>
                     <span className={styles.dateTimeLabel}>종료</span>
                     <input
@@ -884,6 +906,7 @@ export default function Calendar({ user, embedded }: Props) {
                       />
                     )}
                   </div>
+                  )}
                 </div>
               </div>
 
