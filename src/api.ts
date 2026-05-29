@@ -69,6 +69,8 @@ export interface Comment {
   userId: number;
   name: string;
   profileImage: string | null;
+  parentId: number | null;
+  editedAt: string | null;
 }
 
 export interface CalendarEvent {
@@ -466,9 +468,14 @@ export const api = {
   toggleFavorite: (id: number) => request<{ favorited: boolean }>(`/media/${id}/favorite`, { method: 'POST' }),
   recordShare: (id: number) => request<{ ok: boolean }>(`/media/${id}/share`, { method: 'POST' }),
   getComments: (id: number) => request<Comment[]>(`/media/${id}/comments`),
-  addComment: (id: number, content: string) =>
+  addComment: (id: number, content: string, parentId?: number) =>
     request<Comment>(`/media/${id}/comments`, {
       method: 'POST',
+      body: JSON.stringify({ content, parentId }),
+    }),
+  editComment: (id: number, content: string) =>
+    request<Comment>(`/comments/${id}`, {
+      method: 'PATCH',
       body: JSON.stringify({ content }),
     }),
   deleteComment: (id: number) =>

@@ -46,10 +46,11 @@
 }
 
 .pageTitle {
-  font-size: 22px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 23px;
+  font-weight: 800;
   color: var(--color-text);
-  letter-spacing: -0.5px;
+  letter-spacing: -0.7px;
   margin-left: 6px;
 }
 
@@ -82,19 +83,21 @@
    ============================================================ */
 
 .card {
-  margin: 12px 16px 0;
-  padding: 16px;
+  margin: 14px 16px 0;
+  padding: 18px;
   background: var(--color-surface, #fff);
-  border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  animation: fadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  animation: fadeUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.18s ease, box-shadow 0.25s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
 .card:active {
-  transform: scale(0.98);
+  transform: scale(0.985);
+  box-shadow: var(--shadow-sm);
 }
 
 .cardStagger1 { animation-delay: 0s; }
@@ -214,10 +217,11 @@
 }
 
 .cardTitle {
-  font-size: 16px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 16.5px;
+  font-weight: 800;
   color: var(--color-text);
-  letter-spacing: -0.3px;
+  letter-spacing: -0.4px;
 }
 
 .cardBadge {
@@ -257,9 +261,16 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  background: var(--color-bg-secondary, #f8f8fa);
-  border-radius: 12px;
+  padding: 11px 12px;
+  background: linear-gradient(180deg, #FFFFFF 0%, var(--color-bg-secondary) 100%);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease;
+}
+
+.birthdayItem:active {
+  transform: scale(0.99);
 }
 
 .birthdayEmoji {
@@ -294,9 +305,12 @@
 }
 
 .birthdayCount {
-  font-size: 14px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 800;
   color: var(--color-primary);
+  letter-spacing: -0.4px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ============================================================
@@ -312,17 +326,21 @@
 
 .babyStat {
   text-align: center;
-  padding: 10px 4px;
-  background: var(--color-bg-secondary, #f8f8fa);
-  border-radius: 12px;
+  padding: 13px 4px;
+  background: linear-gradient(180deg, #FFFFFF 0%, var(--color-bg-secondary) 100%);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .babyStatValue {
-  font-size: 22px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 800;
   color: var(--color-text);
-  line-height: 1.2;
-  letter-spacing: -0.5px;
+  line-height: 1.15;
+  letter-spacing: -0.8px;
+  font-variant-numeric: tabular-nums;
 }
 
 .babyStatUnit {
@@ -395,9 +413,11 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  background: var(--color-bg-secondary, #f8f8fa);
-  border-radius: 10px;
+  padding: 11px 12px;
+  background: linear-gradient(180deg, #FFFFFF 0%, var(--color-bg-secondary) 100%);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .eventDot {
@@ -443,20 +463,26 @@
 .todoStat {
   flex: 1;
   text-align: center;
-  padding: 12px 8px;
-  background: var(--color-bg-secondary, #f8f8fa);
-  border-radius: 12px;
+  padding: 14px 8px;
+  background: linear-gradient(180deg, #FFFFFF 0%, var(--color-bg-secondary) 100%);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .todoStatOverdue {
-  background: #FF3B3010;
+  background: linear-gradient(180deg, #FFFFFF 0%, rgba(255, 59, 48, 0.07) 100%);
+  border-color: rgba(255, 59, 48, 0.16);
 }
 
 .todoStatValue {
-  font-size: 24px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
   color: var(--color-text);
-  line-height: 1.2;
+  line-height: 1.15;
+  letter-spacing: -0.8px;
+  font-variant-numeric: tabular-nums;
 }
 
 .todoStatOverdue .todoStatValue {

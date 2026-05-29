@@ -383,6 +383,22 @@
   gap: 8px;
 }
 
+.playBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 18px;
+  background: var(--color-text);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  transition: opacity var(--transition), transform 0.1s;
+}
+
+.playBtn:active:not(:disabled) { transform: scale(0.95); }
+.playBtn:disabled { opacity: 0.5; }
+
 .copyBtn {
   padding: 8px 20px;
   background: #FF9500;

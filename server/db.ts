@@ -490,6 +490,10 @@ try { db.exec('ALTER TABLE users ADD COLUMN lastActiveAt TEXT'); } catch {}
 // 마이그레이션: sleeps에 isAutoSleep 컬럼 추가
 try { db.exec('ALTER TABLE sleeps ADD COLUMN isAutoSleep INTEGER DEFAULT 0'); } catch {}
 
+// 마이그레이션: comments에 parentId(대댓글), editedAt(수정 표시) 컬럼 추가
+try { db.exec('ALTER TABLE comments ADD COLUMN parentId INTEGER REFERENCES comments(id) ON DELETE CASCADE'); } catch {}
+try { db.exec('ALTER TABLE comments ADD COLUMN editedAt TEXT'); } catch {}
+
 // 기존 파일들의 해시를 채워넣기 (quick hash: head+tail+size)
 import crypto from 'crypto';
 const CHUNK = 4 * 1024 * 1024;

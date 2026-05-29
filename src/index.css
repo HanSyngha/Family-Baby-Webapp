@@ -3,24 +3,29 @@
    ============================================================ */
 
 :root {
-  /* Colors */
-  --color-bg: #F5F5F7;
-  --color-bg-secondary: #EFEFF1;
+  /* Colors — 따뜻한 오프화이트 베이스 + iOS 블루 + 땅콩 웜 액센트 */
+  --color-bg: #F4F3F1;
+  --color-bg-secondary: #ECEBE7;
   --color-surface: #FFFFFF;
-  --color-surface-hover: #F9F9FB;
-  --color-surface-active: #F0F0F5;
+  --color-surface-hover: #FAFAF8;
+  --color-surface-active: #F1F0EC;
 
   --color-primary: #007AFF;
   --color-primary-soft: #3395FF;
   --color-primary-bg: rgba(0, 122, 255, 0.08);
   --color-primary-glow: rgba(0, 122, 255, 0.15);
 
-  --color-text: #1D1D1F;
-  --color-text-secondary: #86868B;
-  --color-text-tertiary: #AEAEB2;
+  /* 땅콩 웜 액센트 (하이라이트/강조용) */
+  --color-accent: #E8943A;
+  --color-accent-soft: #F2B872;
+  --color-accent-bg: rgba(232, 148, 58, 0.10);
 
-  --color-border: #D2D2D7;
-  --color-border-light: #E8E8ED;
+  --color-text: #1C1A17;
+  --color-text-secondary: #7C7873;
+  --color-text-tertiary: #A8A49E;
+
+  --color-border: #DEDCD7;
+  --color-border-light: #EAE8E3;
 
   --color-success: #34C759;
   --color-warning: #FF9F0A;
@@ -36,8 +41,9 @@
   --color-priority-medium: #007AFF;
   --color-priority-low: #86868B;
 
-  /* Typography */
-  --font-body: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard Variable', system-ui, sans-serif;
+  /* Typography — Pretendard 우선 (프리미엄 한글), 시스템 폴백 */
+  --font-body: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', system-ui, sans-serif;
+  --font-display: 'Pretendard Variable', Pretendard, -apple-system, system-ui, sans-serif;
 
   /* Spacing (4px base) */
   --space-1: 4px;
@@ -57,15 +63,16 @@
   --radius-xl: 20px;
   --radius-full: 9999px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.1);
+  /* Shadows — 웜톤 다층 그림자 (프리미엄 입체감) */
+  --shadow-sm: 0 1px 2px rgba(40, 36, 30, 0.05), 0 1px 1px rgba(40, 36, 30, 0.03);
+  --shadow: 0 2px 6px rgba(40, 36, 30, 0.06), 0 6px 18px rgba(40, 36, 30, 0.05);
+  --shadow-lg: 0 6px 16px rgba(40, 36, 30, 0.08), 0 14px 36px rgba(40, 36, 30, 0.07);
+  --shadow-xl: 0 12px 28px rgba(40, 36, 30, 0.10), 0 28px 60px rgba(40, 36, 30, 0.10);
 
   /* Transitions */
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-spring: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-spring: 0.46s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-expo: 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 
   /* Layout */
   --sidebar-width: 240px;
@@ -92,11 +99,23 @@ body {
   font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.5;
+  letter-spacing: -0.01em;
   color: var(--color-text);
   background: var(--color-bg);
+  background-image:
+    radial-gradient(1100px 760px at 100% -8%, rgba(232, 148, 58, 0.055), transparent 58%),
+    radial-gradient(900px 680px at -8% 108%, rgba(0, 122, 255, 0.045), transparent 55%);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   overflow-x: hidden;
+}
+
+/* 선택 영역 색상 */
+::selection {
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
 }
 
 a {
