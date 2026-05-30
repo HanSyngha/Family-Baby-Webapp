@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { api, type User, type MediaItem } from '../api';
 import { useUploadQueue } from '../hooks/useUploadQueue';
 import { useProcessingStatus } from '../hooks/useProcessingStatus';
@@ -9,6 +9,8 @@ import Lightbox from '../components/gallery/Lightbox';
 import UploadModal from '../components/gallery/UploadModal';
 import AddToAlbumSheet from '../components/gallery/AddToAlbumSheet';
 import ShareSheet from '../components/gallery/ShareSheet';
+import DateScrubber from '../components/gallery/DateScrubber';
+import type { GalleryEvent } from '../api';
 import styles from './Gallery.module.css';
 
 interface Props {
@@ -35,6 +37,7 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
   const [copying, setCopying] = useState(false);
   const [showAddToAlbum, setShowAddToAlbum] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
+  const [events, setEvents] = useState<GalleryEvent[]>([]);
   const [shuffledItems, setShuffledItems] = useState<{ id: number; filename: string; type: string }[] | null>(null);
   const initialLoad = useRef(false);
 
@@ -80,6 +83,22 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
   useEffect(() => {
     return bindPinch(gridRef.current);
   }, [bindPinch]);
+
+  // 스크러버 풍선용 이벤트 자막 (땅땅&콩콩 탭에서만)
+  useEffect(() => {
+    if (scope === 'shared') api.getGalleryEvents().then(setEvents).catch(() => {});
+  }, [scope]);
+
+  // 스크롤 컨테이너(AppShell .content) — 그리드의 가장 가까운 스크롤 부모
+  const getScrollEl = useCallback((): HTMLElement | null => {
+    let el = gridRef.current as HTMLElement | null;
+    while (el) {
+      const oy = getComputedStyle(el).overflowY;
+      if ((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight) return el;
+      el = el.parentElement;
+    }
+    return document.scrollingElement as HTMLElement | null;
+  }, []);
 
   useEffect(() => {
     if (processing.justFinished) {
@@ -208,19 +227,6 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
     }
   }, [selectedIds, items]);
 
-  const months = useMemo(() => {
-    if (sort !== 'recent') return [];
-    const seen = new Set<string>();
-    return items.reduce<string[]>((acc, item) => {
-      const m = item.createdAt.slice(0, 7);
-      if (!seen.has(m)) { seen.add(m); acc.push(m); }
-      return acc;
-    }, []);
-  }, [items, sort]);
-
-  const scrollToMonth = useCallback((month: string) => {
-    document.getElementById(`month-${month}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, []);
 
   const openLightbox = useCallback((index: number) => {
     setLightboxIndex(index);
@@ -352,15 +358,14 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
           </div>
         )}
 
-        {/* Month timeline */}
-        {months.length > 1 && (
-          <div className={styles.monthBar}>
-            {months.map(m => (
-              <button key={m} className={styles.monthChip} onClick={() => scrollToMonth(m)}>
-                {m.slice(2).replace('-', '.')}
-              </button>
-            ))}
-          </div>
+        {/* 빠른 날짜 이동: 사이드 스크러버 + 캘린더 (가로 monthBar 대체) */}
+        {sort === 'recent' && items.length > 0 && (
+          <DateScrubber
+            items={items}
+            events={scope === 'shared' ? events : undefined}
+            babyBirth={isPrivate ? null : babyBirth}
+            getScrollEl={getScrollEl}
+          />
         )}
 
         {/* Processing banner */}
