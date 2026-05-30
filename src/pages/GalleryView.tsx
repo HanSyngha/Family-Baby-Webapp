@@ -365,6 +365,7 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
             events={scope === 'shared' ? events : undefined}
             babyBirth={isPrivate ? null : babyBirth}
             getScrollEl={getScrollEl}
+            hasMore={!!nextCursor}
           />
         )}
 
