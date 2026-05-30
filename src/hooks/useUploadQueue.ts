@@ -8,7 +8,7 @@ export interface UploadFile {
   retryCount: number;
 }
 
-export function useUploadQueue(onUploaded: () => void) {
+export function useUploadQueue(onUploaded: () => void, visibility?: string) {
   const [files, setFiles] = useState<UploadFile[]>([]);
   const uploadingRef = useRef(false);
   // 큐 전진 트리거. 파일 추가/직전 작업 완료 시 올린다.
@@ -53,7 +53,7 @@ export function useUploadQueue(onUploaded: () => void) {
 
         const res = await api.uploadFile(fileToUpload, (pct) => {
           setFiles(prev => prev.map((f, i) => i === pendingIdx ? { ...f, progress: pct } : f));
-        });
+        }, visibility);
 
         if (res.duplicate) {
           setFiles(prev => prev.map((f, i) => i === pendingIdx ? { ...f, status: 'duplicate', progress: 100 } : f));

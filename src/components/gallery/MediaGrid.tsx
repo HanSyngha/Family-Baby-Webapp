@@ -16,11 +16,20 @@ interface Props {
   onLongPress?: (firstId: number) => void;
   onLikeToggle?: (id: number, liked: boolean) => void;
   isAdmin?: boolean;
+  babyBirth?: string | null;
+  enableEvents?: boolean;
 }
 
 function formatDateHeader(dateStr: string): string {
   const [y, m, d] = dateStr.slice(0, 10).split('-');
   return `${y.slice(2)}.${m}.${d}`;
+}
+
+// 생일 기준 "태어난지 N일" (D+1 = 생일 당일). 생일 이전이면 null.
+function daysSinceBirth(dateKey: string, birth?: string | null): number | null {
+  if (!birth) return null;
+  const day = Math.floor((new Date(dateKey + 'T00:00:00').getTime() - new Date(birth.slice(0, 10) + 'T00:00:00').getTime()) / 86400000) + 1;
+  return day >= 1 ? day : null;
 }
 
 function getDateKey(dateStr: string): string {
@@ -33,14 +42,14 @@ interface DateGroup {
   items: { item: MediaItem; globalIndex: number }[];
 }
 
-export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sort, columns, selectMode, selectedIds, onLongPress, onLikeToggle, isAdmin }: Props) {
+export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sort, columns, selectMode, selectedIds, onLongPress, onLikeToggle, isAdmin, babyBirth, enableEvents }: Props) {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   // 갤러리 이벤트 자막
   const [events, setEvents] = useState<GalleryEvent[]>([]);
   const [editDate, setEditDate] = useState<string | null>(null);
   const refetchEvents = useCallback(() => { api.getGalleryEvents().then(setEvents).catch(() => {}); }, []);
-  useEffect(() => { refetchEvents(); }, [refetchEvents]);
+  useEffect(() => { if (enableEvents) refetchEvents(); }, [refetchEvents, enableEvents]);
 
   const eventForDate = useCallback(
     (dateKey: string) => events.find(e => dateKey >= e.startDate && dateKey <= e.endDate) ?? null,
@@ -131,17 +140,18 @@ export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sor
           <section key={group.dateKey} className={styles.section} id={monthId ? `month-${monthId}` : undefined}>
             <div
               className={styles.dateHeader}
-              onPointerDown={isAdmin ? () => startPress(group.dateKey) : undefined}
-              onPointerUp={isAdmin ? cancelPress : undefined}
-              onPointerLeave={isAdmin ? cancelPress : undefined}
-              onPointerCancel={isAdmin ? cancelPress : undefined}
+              onPointerDown={isAdmin && enableEvents ? () => startPress(group.dateKey) : undefined}
+              onPointerUp={isAdmin && enableEvents ? cancelPress : undefined}
+              onPointerLeave={isAdmin && enableEvents ? cancelPress : undefined}
+              onPointerCancel={isAdmin && enableEvents ? cancelPress : undefined}
             >
               <span className={styles.dateLine} />
               <span className={styles.dateLabel}>{group.label}</span>
               <span className={styles.dateCount}>{group.items.length}장</span>
+              {(() => { const d = daysSinceBirth(group.dateKey, babyBirth); return d ? <span className={styles.seolBadge}>👶 {d}일</span> : null; })()}
               <span className={styles.dateLine} />
             </div>
-            {(() => {
+            {enableEvents && (() => {
               const cap = captionFor(group.dateKey);
               return cap ? (
                 <div className={styles.eventCaption} style={{ color: cap.color, cursor: isAdmin ? 'pointer' : 'default' }} onClick={isAdmin ? () => setEditDate(group.dateKey) : undefined}>
@@ -156,7 +166,7 @@ export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sor
         );
       })}
       {hasMore && <div ref={sentinelRef} className={styles.sentinel} />}
-      {isAdmin && editDate && (
+      {isAdmin && enableEvents && editDate && (
         <EventModal
           date={editDate}
           event={eventForDate(editDate)}

@@ -15,6 +15,8 @@ const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
 db.pragma('foreign_keys = ON');
+// 이관 스크립트 등 동시 쓰기와의 락 경합 완화
+db.pragma('busy_timeout = 10000');
 
 // ============================================================
 // 기존 테이블 (갤러리 - 땅콩땅콩땅땅콩콩에서 복사)
@@ -508,6 +510,69 @@ try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_gallery_events_date ON gallery_events(startDate, endDate)');
 } catch {}
 
+// ============================================================
+// 갤러리 업그레이드: 개인/공유 구분 + 촬영시각 + 앨범(한설/여행) + 장소
+// 전부 비파괴. visibility DEFAULT 'shared' → 기존 미디어 전량 공유 유지(회귀 0).
+// ============================================================
+try { db.exec('ALTER TABLE media ADD COLUMN takenAt TEXT'); } catch {}
+try { db.exec("ALTER TABLE media ADD COLUMN visibility TEXT DEFAULT 'shared'"); } catch {}
+try { db.exec('ALTER TABLE media ADD COLUMN ownerId INTEGER'); } catch {}
+try { db.exec('ALTER TABLE media ADD COLUMN lat REAL'); } catch {}
+try { db.exec('ALTER TABLE media ADD COLUMN lng REAL'); } catch {}
+try { db.exec('ALTER TABLE media ADD COLUMN livePhotoGroup TEXT'); } catch {}
+try { db.exec('ALTER TABLE media ADD COLUMN place TEXT'); } catch {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_media_vis_owner ON media(visibility, ownerId, createdAt DESC)'); } catch {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_media_takenat ON media(takenAt)'); } catch {}
+
+// 앨범: 한설(공유 전체, 앨범 미사용) / 여행(kind='trip')
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS albums (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    coverMediaId INTEGER,
+    startDate TEXT,
+    endDate TEXT,
+    color TEXT NOT NULL DEFAULT '#E8943A',
+    createdBy INTEGER REFERENCES users(id),
+    sortOrder INTEGER DEFAULT 0,
+    createdAt TEXT DEFAULT (datetime('now', '+9 hours'))
+  )`);
+} catch {}
+
+// 여행 하위 장소 (여행 → 장소 → 세부시간). album_items가 참조하므로 먼저 생성.
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS trip_places (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    albumId INTEGER NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    lat REAL,
+    lng REAL,
+    startAt TEXT,
+    endAt TEXT,
+    sortOrder INTEGER DEFAULT 0,
+    createdAt TEXT DEFAULT (datetime('now', '+9 hours'))
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_trip_places_album ON trip_places(albumId)');
+} catch {}
+
+// 앨범 멤버십 (M:N — 한 사진이 여러 여행에 동시 존재 가능, 파일 1개)
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS album_items (
+    albumId INTEGER NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+    mediaId INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+    placeId INTEGER REFERENCES trip_places(id) ON DELETE SET NULL,
+    sortOrder INTEGER DEFAULT 0,
+    addedAt TEXT DEFAULT (datetime('now', '+9 hours')),
+    PRIMARY KEY (albumId, mediaId)
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_album_items_media ON album_items(mediaId)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_album_items_place ON album_items(placeId)');
+} catch {}
+
+// 설이(한설) 생일 시드 — 프론트 하드코딩 제거 후 DB 단일 소스로
+try { db.exec("UPDATE babies SET birthDate = '2026-02-19' WHERE name = '한설' AND birthDate IS NULL"); } catch {}
+
 // 기존 파일들의 해시를 채워넣기 (quick hash: head+tail+size)
 import crypto from 'crypto';
 const CHUNK = 4 * 1024 * 1024;
@@ -560,8 +625,10 @@ if (PEANUT_DATA_DIR) {
 // ============================================================
 // 기존 중복 파일 정리: P2에 로컬로 있지만 P1에도 같은 hash로 있는 파일
 // → source='peanut'으로 변경하고 로컬 복사본 삭제
+// ⚠️ 이 로직은 family 로컬 원본을 삭제하므로, Immich 이관 원본 보호를 위해
+//    기본 비활성(env ENABLE_PEANUT_DEDUP='true'일 때만). 되돌릴 수 있게 코드 보존.
 // ============================================================
-if (peanutDb) {
+if (peanutDb && process.env.ENABLE_PEANUT_DEDUP === 'true') {
   const dupes = db.prepare(`
     SELECT m.id, m.filename, m.hash FROM media m
     WHERE m.source = 'local' AND m.hash IS NOT NULL
@@ -658,9 +725,13 @@ function syncFromPeanut() {
   }
 }
 
-// 시작 시 즉시 1회 + 30초마다
-syncFromPeanut();
-setInterval(syncFromPeanut, 30 * 1000);
+// 역방향 자동 싱크(땅콩땅콩→땅콩페밀리). 요구사항상 기본 비활성 — env로만 활성화.
+if (process.env.ENABLE_PEANUT_SYNC === 'true') {
+  syncFromPeanut();
+  setInterval(syncFromPeanut, 30 * 1000);
+} else {
+  console.log('[Sync] Reverse peanut→family sync disabled (set ENABLE_PEANUT_SYNC=true to enable)');
+}
 
 export { peanutDb };
 export default db;

@@ -99,6 +99,8 @@ export default function Lightbox({ items, index, user, onClose, onNavigate, onDe
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [editingDate, setEditingDate] = useState(false);
   const [dateValue, setDateValue] = useState('');
+  const [placeValue, setPlaceValue] = useState('');
+  const [localPlace, setLocalPlace] = useState<string | null>(null);
   const [slideshow, setSlideshow] = useState(!!initialSlideshow);
   const [events, setEvents] = useState<{ startDate: string; endDate: string; title: string; color: string }[]>([]);
 
@@ -191,21 +193,33 @@ export default function Lightbox({ items, index, user, onClose, onNavigate, onDe
   }, [item.id, onDelete]);
 
   const canEdit = item.uploaderId === user.id || user.role === 'master';
+  const isPrivate = item.visibility === 'private';
+
+  // 항목 전환 시 장소 동기화 + 편집모드 해제
+  useEffect(() => { setLocalPlace(item.place ?? null); setEditingDate(false); }, [item.id, item.place]);
 
   const handleDateEdit = useCallback(() => {
     setDateValue(item.createdAt.slice(0, 16).replace(' ', 'T'));
+    setPlaceValue(item.place ?? '');
     setEditingDate(true);
-  }, [item.createdAt]);
+  }, [item.createdAt, item.place]);
 
   const handleDateSave = useCallback(async () => {
     if (!dateValue) return;
     const newDate = dateValue.replace('T', ' ');
     try {
-      const result = await api.updateMediaDate(item.id, newDate);
-      onDateChange(item.id, result.createdAt);
+      if (isPrivate) {
+        // 개인 사진: 시간(촬영시각) + 장소 메타데이터를 그 값으로 갱신
+        const r = await api.updateMediaMeta(item.id, { takenAt: newDate, place: placeValue });
+        onDateChange(item.id, r.createdAt);
+        setLocalPlace(r.place);
+      } else {
+        const result = await api.updateMediaDate(item.id, newDate);
+        onDateChange(item.id, result.createdAt);
+      }
     } catch {}
     setEditingDate(false);
-  }, [item.id, dateValue, onDateChange]);
+  }, [item.id, dateValue, placeValue, isPrivate, onDateChange]);
 
   return (
     <div className={styles.overlay}>
@@ -266,25 +280,38 @@ export default function Lightbox({ items, index, user, onClose, onNavigate, onDe
             <div>
               <div className={styles.uploaderName}>{item.uploaderName}</div>
               {editingDate ? (
-                <div className={styles.dateEdit}>
+                <div className={styles.metaEdit}>
                   <input
                     type="datetime-local"
                     value={dateValue}
                     onChange={e => setDateValue(e.target.value)}
                     className={styles.dateInput}
                   />
-                  <button onClick={handleDateSave} className={styles.dateSaveBtn}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
-                  </button>
-                  <button onClick={() => setEditingDate(false)} className={styles.dateCancelBtn}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
-                  </button>
+                  {isPrivate && (
+                    <input
+                      type="text"
+                      value={placeValue}
+                      onChange={e => setPlaceValue(e.target.value)}
+                      placeholder="장소 (예: 제주 협재해변)"
+                      className={styles.placeInput}
+                      maxLength={60}
+                    />
+                  )}
+                  <div className={styles.metaEditBtns}>
+                    <button onClick={handleDateSave} className={styles.dateSaveBtn}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
+                    </button>
+                    <button onClick={() => setEditingDate(false)} className={styles.dateCancelBtn}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className={styles.uploadTime}>
                   {item.createdAt.slice(2, 10).replace(/-/g, '.')}
+                  {isPrivate && localPlace && <span className={styles.placeInline}> · 📍 {localPlace}</span>}
                   {canEdit && (
-                    <button onClick={handleDateEdit} className={styles.dateEditBtn}>
+                    <button onClick={handleDateEdit} className={styles.dateEditBtn} aria-label="시간·장소 편집">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                     </button>
                   )}
@@ -294,7 +321,7 @@ export default function Lightbox({ items, index, user, onClose, onNavigate, onDe
           </div>
 
           {eventCaption && (
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 700, letterSpacing: '-0.2px', color: eventCaption.color, padding: '2px 2px 8px', borderBottom: '1px solid var(--color-border-light)', marginBottom: 10 }}>
+            <div className={styles.eventChip} style={{ color: eventCaption.color, background: eventCaption.color + '22' }}>
               {eventCaption.text}
             </div>
           )}

@@ -15,12 +15,32 @@ function resolveDataDir(source: string | null): string {
     : DATA_DIR;
 }
 
+// 개인(비공개) 미디어 접근 가드. 비공개는 소유 관리자 본인만. 아니면 404로 위장.
+function assertMediaAccess(media: { visibility?: string; ownerId?: number | null }, user: { userId: number; role: string }, reply: any): boolean {
+  if (media.visibility === 'private' && !(user.role === 'master' && media.ownerId === user.userId)) {
+    reply.code(404).send({ error: 'Not found' });
+    return false;
+  }
+  return true;
+}
+
 export function registerMediaRoutes(app: FastifyInstance) {
   // 미디어 목록 (커서 기반 페이지네이션, sort 지원)
   app.get('/api/media', { preHandler: authenticate }, async (request) => {
-    const { cursor, limit = '20', sort = 'recent' } = request.query as { cursor?: string; limit?: string; sort?: string };
+    const { cursor, limit = '20', sort = 'recent', scope = 'shared' } = request.query as { cursor?: string; limit?: string; sort?: string; scope?: string };
     const lim = Math.min(parseInt(limit), 50);
     const { userId, role } = (request as any).user;
+
+    // 스코프 필터: 공유(전원) vs 개인(관리자 본인 것만)
+    let scopeWhere: string;
+    const scopeParams: any[] = [];
+    if (scope === 'private') {
+      if (role !== 'master') return { items: [], nextCursor: null };
+      scopeWhere = "m.visibility = 'private' AND m.ownerId = ?";
+      scopeParams.push(userId);
+    } else {
+      scopeWhere = "m.visibility = 'shared'";
+    }
 
     const baseQuery = `
       SELECT m.*,
@@ -41,15 +61,15 @@ export function registerMediaRoutes(app: FastifyInstance) {
 
     let rows: any[];
     if (sort === 'likes') {
-      rows = db.prepare(baseQuery + ' ORDER BY likeCount DESC, m.id DESC').all(userId, userId);
+      rows = db.prepare(baseQuery + ` WHERE ${scopeWhere} ORDER BY likeCount DESC, m.id DESC`).all(userId, userId, ...scopeParams);
     } else if (sort === 'views') {
-      rows = db.prepare(baseQuery + ' ORDER BY (SELECT COUNT(*) FROM views WHERE mediaId = m.id) DESC, m.id DESC').all(userId, userId);
+      rows = db.prepare(baseQuery + ` WHERE ${scopeWhere} ORDER BY (SELECT COUNT(*) FROM views WHERE mediaId = m.id) DESC, m.id DESC`).all(userId, userId, ...scopeParams);
     } else if (sort === 'favorites') {
-      rows = db.prepare(baseQuery + ' WHERE EXISTS(SELECT 1 FROM favorites WHERE mediaId = m.id AND userId = ?) ORDER BY m.createdAt DESC').all(userId, userId, userId);
+      rows = db.prepare(baseQuery + ` WHERE ${scopeWhere} AND EXISTS(SELECT 1 FROM favorites WHERE mediaId = m.id AND userId = ?) ORDER BY m.createdAt DESC`).all(userId, userId, ...scopeParams, userId);
     } else if (cursor) {
-      rows = db.prepare(baseQuery + ' WHERE m.createdAt < ? ORDER BY m.createdAt DESC, m.id DESC LIMIT ?').all(userId, userId, cursor, lim);
+      rows = db.prepare(baseQuery + ` WHERE ${scopeWhere} AND m.createdAt < ? ORDER BY m.createdAt DESC, m.id DESC LIMIT ?`).all(userId, userId, ...scopeParams, cursor, lim);
     } else {
-      rows = db.prepare(baseQuery + ' ORDER BY m.createdAt DESC, m.id DESC LIMIT ?').all(userId, userId, lim);
+      rows = db.prepare(baseQuery + ` WHERE ${scopeWhere} ORDER BY m.createdAt DESC, m.id DESC LIMIT ?`).all(userId, userId, ...scopeParams, lim);
     }
 
     const isMaster = role === 'master';
@@ -66,8 +86,15 @@ export function registerMediaRoutes(app: FastifyInstance) {
   });
 
   // 전체 미디어 ID 목록 (랜덤 재생용, 가벼움)
-  app.get('/api/media/ids', { preHandler: authenticate }, async () => {
-    const rows = db.prepare('SELECT id, filename, type, createdAt FROM media ORDER BY createdAt DESC').all();
+  app.get('/api/media/ids', { preHandler: authenticate }, async (request) => {
+    const { scope = 'shared' } = request.query as { scope?: string };
+    const { userId, role } = (request as any).user;
+    if (scope === 'private') {
+      if (role !== 'master') return { items: [] };
+      const rows = db.prepare("SELECT id, filename, type, createdAt FROM media WHERE visibility = 'private' AND ownerId = ? ORDER BY createdAt DESC").all(userId);
+      return { items: rows };
+    }
+    const rows = db.prepare("SELECT id, filename, type, createdAt FROM media WHERE visibility = 'shared' ORDER BY createdAt DESC").all();
     return { items: rows };
   });
 
@@ -95,6 +122,7 @@ export function registerMediaRoutes(app: FastifyInstance) {
     `).get(userId, userId, parseInt(id)) as any;
 
     if (!row) return reply.code(404).send({ error: 'Not found' });
+    if (!assertMediaAccess(row, { userId, role }, reply)) return;
 
     const isMaster = role === 'master';
     const viewers = isMaster && row.viewersJson ? JSON.parse(row.viewersJson).filter((v: any) => v.userId !== null) : [];
@@ -148,8 +176,12 @@ export function registerMediaRoutes(app: FastifyInstance) {
       return { ok: true, duplicate: true, existingId: existing.id };
     }
 
-    const uploaderId = (request as any).user.userId;
-    enqueue({ filename, originalName: data.filename, mimeType, type, size: stat.size, uploaderId, hash: fileHash });
+    const { userId: uploaderId, role } = (request as any).user;
+    // 개인(비공개) 업로드는 관리자만. 그 외는 공유.
+    const { visibility } = request.query as { visibility?: string };
+    const vis = (visibility === 'private' && role === 'master') ? 'private' : 'shared';
+    const ownerId = vis === 'private' ? uploaderId : null;
+    enqueue({ filename, originalName: data.filename, mimeType, type, size: stat.size, uploaderId, hash: fileHash, visibility: vis, ownerId });
     app.log.info({ originalName: data.filename, uploaderId, filename }, 'Enqueued for processing');
 
     return { ok: true, filename };
@@ -159,7 +191,7 @@ export function registerMediaRoutes(app: FastifyInstance) {
   app.patch('/api/media/:id', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const { userId, role } = (request as any).user;
-    const { createdAt } = request.body as { createdAt: string };
+    const { createdAt, takenAt, place } = request.body as { createdAt?: string; takenAt?: string; place?: string };
 
     const media = db.prepare('SELECT uploaderId FROM media WHERE id = ?').get(parseInt(id)) as any;
     if (!media) return reply.code(404).send({ error: 'Not found' });
@@ -167,14 +199,27 @@ export function registerMediaRoutes(app: FastifyInstance) {
       return reply.code(403).send({ error: 'Forbidden' });
     }
 
-    // YY-MM-DD HH:mm 또는 YYYY-MM-DD HH:mm:ss 형태 허용
-    if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(createdAt)) {
-      return reply.code(400).send({ error: 'Invalid date format' });
+    // 메타데이터 수정: 시간(takenAt+createdAt 동기화) / 장소(place). 둘 다 그 값으로 갱신.
+    const sets: string[] = [];
+    const vals: any[] = [];
+    const t = takenAt ?? createdAt; // 시간 입력 (YY-MM-DD HH:mm 또는 :ss)
+    if (t !== undefined) {
+      if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(t)) {
+        return reply.code(400).send({ error: 'Invalid date format' });
+      }
+      const full = t.length === 16 ? t + ':00' : t;
+      sets.push('createdAt = ?', 'takenAt = ?');
+      vals.push(full, full);
     }
-
-    const fullDate = createdAt.length === 16 ? createdAt + ':00' : createdAt;
-    db.prepare('UPDATE media SET createdAt = ? WHERE id = ?').run(fullDate, parseInt(id));
-    return { ok: true, createdAt: fullDate };
+    if (place !== undefined) {
+      sets.push('place = ?');
+      vals.push(place && place.trim() ? place.trim() : null);
+    }
+    if (sets.length === 0) return reply.code(400).send({ error: 'Nothing to update' });
+    vals.push(parseInt(id));
+    db.prepare(`UPDATE media SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
+    const row = db.prepare('SELECT createdAt, takenAt, place FROM media WHERE id = ?').get(parseInt(id));
+    return { ok: true, ...(row as object) };
   });
 
   // 삭제
@@ -206,8 +251,10 @@ export function registerMediaRoutes(app: FastifyInstance) {
   // 원본 파일 서빙 (Range Request 지원)
   app.get('/api/media/:id/file', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const media = db.prepare('SELECT filename, mimeType, size, source FROM media WHERE id = ?').get(parseInt(id)) as any;
+    const { userId, role } = (request as any).user;
+    const media = db.prepare('SELECT filename, mimeType, size, source, visibility, ownerId FROM media WHERE id = ?').get(parseInt(id)) as any;
     if (!media) return reply.code(404).send({ error: 'Not found' });
+    if (!assertMediaAccess(media, { userId, role }, reply)) return;
 
     const filePath = path.join(resolveDataDir(media.source), 'originals', media.filename);
     if (!fs.existsSync(filePath)) return reply.code(404).send({ error: 'File not found' });
@@ -242,8 +289,10 @@ export function registerMediaRoutes(app: FastifyInstance) {
   // 썸네일 서빙
   app.get('/api/media/:id/thumb', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const media = db.prepare('SELECT filename, source FROM media WHERE id = ?').get(parseInt(id)) as any;
+    const { userId, role } = (request as any).user;
+    const media = db.prepare('SELECT filename, source, visibility, ownerId FROM media WHERE id = ?').get(parseInt(id)) as any;
     if (!media) return reply.code(404).send({ error: 'Not found' });
+    if (!assertMediaAccess(media, { userId, role }, reply)) return;
 
     const thumbPath = path.join(resolveDataDir(media.source), 'thumbnails', media.filename + '.webp');
     if (!fs.existsSync(thumbPath)) return reply.code(404).send({ error: 'Thumbnail not found' });
@@ -258,8 +307,10 @@ export function registerMediaRoutes(app: FastifyInstance) {
   // HLS playlist 서빙
   app.get('/api/media/:id/hls/playlist.m3u8', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const media = db.prepare('SELECT filename, source FROM media WHERE id = ?').get(parseInt(id)) as any;
+    const { userId, role } = (request as any).user;
+    const media = db.prepare('SELECT filename, source, visibility, ownerId FROM media WHERE id = ?').get(parseInt(id)) as any;
     if (!media) return reply.code(404).send({ error: 'Not found' });
+    if (!assertMediaAccess(media, { userId, role }, reply)) return;
 
     const playlistPath = path.join(resolveDataDir(media.source), 'hls', media.filename, 'playlist.m3u8');
     if (!fs.existsSync(playlistPath)) return reply.code(404).send({ error: 'HLS not available' });
@@ -277,8 +328,10 @@ export function registerMediaRoutes(app: FastifyInstance) {
     if (segment.includes('/') || segment.includes('\\') || segment.includes('..')) {
       return reply.code(400).send({ error: 'Invalid segment' });
     }
-    const media = db.prepare('SELECT filename, source FROM media WHERE id = ?').get(parseInt(id)) as any;
+    const { userId, role } = (request as any).user;
+    const media = db.prepare('SELECT filename, source, visibility, ownerId FROM media WHERE id = ?').get(parseInt(id)) as any;
     if (!media) return reply.code(404).send({ error: 'Not found' });
+    if (!assertMediaAccess(media, { userId, role }, reply)) return;
 
     const segmentPath = path.join(resolveDataDir(media.source), 'hls', media.filename, segment);
     if (!fs.existsSync(segmentPath)) return reply.code(404).send({ error: 'Segment not found' });
@@ -294,10 +347,11 @@ export function registerMediaRoutes(app: FastifyInstance) {
   // 다운로드 (원본 다운로드 + 기록)
   app.get('/api/media/:id/download', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const userId = (request as any).user.userId;
+    const { userId, role } = (request as any).user;
 
-    const media = db.prepare('SELECT filename, originalName, mimeType, size, source FROM media WHERE id = ?').get(parseInt(id)) as any;
+    const media = db.prepare('SELECT filename, originalName, mimeType, size, source, visibility, ownerId FROM media WHERE id = ?').get(parseInt(id)) as any;
     if (!media) return reply.code(404).send({ error: 'Not found' });
+    if (!assertMediaAccess(media, { userId, role }, reply)) return;
 
     const filePath = path.join(resolveDataDir(media.source), 'originals', media.filename);
     if (!fs.existsSync(filePath)) return reply.code(404).send({ error: 'File not found' });
@@ -353,6 +407,8 @@ export function registerMediaRoutes(app: FastifyInstance) {
       try {
         media = db.prepare('SELECT * FROM media WHERE id = ?').get(id);
         if (!media) { errors.push(`ID ${id} 없음`); continue; }
+        // 개인(비공개) 사진은 땅콩땅콩으로 공유 금지 (공유 갤러리에서만 가능)
+        if (media.visibility === 'private') { errors.push(`${media.originalName}: 개인 사진은 공유할 수 없습니다`); continue; }
 
         // 해시로 중복 체크
         if (media.hash) {

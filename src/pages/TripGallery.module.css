@@ -1,0 +1,179 @@
+.list {
+  padding: 12px 16px 96px;
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.loading, .empty {
+  text-align: center;
+  color: var(--color-text-tertiary, #8e8e93);
+  padding: 48px 16px;
+  font-size: 14px;
+}
+.empty p { font-size: 16px; font-weight: 600; color: var(--color-text-secondary, #636366); margin: 12px 0 4px; }
+.emptyIllust { font-size: 44px; }
+.emptyHint { font-size: 13px; }
+
+/* 새 여행 만들기 */
+.newBtn {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 14px;
+  border: 1.5px dashed var(--color-border, #d8d8dd);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--color-primary, #E8943A);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.newBtn:active { background: var(--color-surface-2, #f5f5f7); }
+
+.newRow { display: flex; gap: 8px; margin-bottom: 14px; }
+.newInput {
+  flex: 1;
+  padding: 12px 14px;
+  border: 1.5px solid var(--color-primary, #E8943A);
+  border-radius: 12px;
+  font-size: 15px;
+  outline: none;
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #1c1c1e);
+}
+.newConfirm {
+  padding: 0 16px; border: none; border-radius: 12px;
+  background: var(--color-primary, #E8943A); color: #fff; font-weight: 700; font-size: 14px; cursor: pointer;
+}
+.newConfirm:disabled { opacity: 0.5; }
+.newCancel { padding: 0 12px; border: none; background: none; color: var(--color-text-tertiary, #8e8e93); font-size: 14px; cursor: pointer; }
+
+/* 여행 카드 */
+.cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+@media (min-width: 700px) { .cards { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 1200px) { .cards { grid-template-columns: 1fr 1fr 1fr; } }
+
+.card {
+  border: none;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.card:active { transform: scale(0.98); }
+
+.cover {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.coverImg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.coverEmpty { font-size: 48px; opacity: 0.5; }
+
+.coverOverlay {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 28px 16px 14px;
+  background: linear-gradient(to top, rgba(0,0,0,0.62), transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+.cardTitle { color: #fff; font-size: 18px; font-weight: 700; text-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+.cardMeta { color: rgba(255,255,255,0.88); font-size: 13px; font-weight: 500; }
+
+.cardBadge {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+}
+
+/* 상세 */
+.detail { padding: 8px 16px 96px; max-width: 1440px; margin: 0 auto; width: 100%; }
+.detailHeader { display: flex; align-items: center; gap: 10px; padding: 8px 0 12px; }
+.backBtn, .delBtn {
+  flex-shrink: 0;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: var(--color-surface-2, #f5f5f7); border-radius: 50%;
+  color: var(--color-text, #1c1c1e); cursor: pointer;
+}
+.delBtn { color: #e5484d; }
+.detailTitleWrap { flex: 1; min-width: 0; }
+.detailTitle { font-size: 20px; font-weight: 700; margin: 0; color: var(--color-text, #1c1c1e); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.detailMeta { font-size: 13px; color: var(--color-text-tertiary, #8e8e93); }
+
+/* 타임라인 레일 — 장소를 시간순 칩으로, 상단 고정 */
+.timelineRail {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 0;
+  margin-bottom: 4px;
+  background: var(--color-bg, #fafafa);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.timelineRail::-webkit-scrollbar { display: none; }
+.railChip {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 7px 13px;
+  border: 1px solid var(--color-border, #e5e5ea);
+  border-radius: 14px;
+  background: var(--color-surface, #fff);
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+.railChip:active { transform: scale(0.95); border-color: var(--color-primary, #E8943A); }
+.railTime { font-size: 11px; font-weight: 700; color: var(--color-primary, #E8943A); }
+.railName { font-size: 13px; font-weight: 600; color: var(--color-text, #1c1c1e); white-space: nowrap; }
+
+/* 장소 섹션 */
+.placeSection { scroll-margin-top: 64px; margin-bottom: 8px; }
+.placeHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 2px 8px;
+}
+.placeName {
+  border: none; background: none; padding: 0; cursor: pointer;
+  font-size: 16px; font-weight: 700; color: var(--color-text, #1c1c1e);
+  text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.placeMeta { font-size: 12px; color: var(--color-text-tertiary, #8e8e93); flex: 1; white-space: nowrap; }
+.placeDel {
+  flex-shrink: 0; width: 24px; height: 24px; border: none; background: none;
+  color: var(--color-text-tertiary, #8e8e93); font-size: 14px; cursor: pointer; border-radius: 50%;
+}
+.placeDel:active { background: var(--color-surface-2, #f5f5f7); }
+.placeRename {
+  flex: 1; min-width: 0;
+  padding: 6px 10px; border: 1.5px solid var(--color-primary, #E8943A); border-radius: 9px;
+  font-size: 15px; font-weight: 600; outline: none; background: var(--color-surface, #fff); color: var(--color-text, #1c1c1e);
+}

@@ -232,6 +232,41 @@ export async function processVideo(filename: string): Promise<ProcessResult> {
   return { width: info.width, height: info.height, duration: info.duration, takenAt: info.takenAt };
 }
 
+// 마이그레이션용: 썸네일만 생성 (HLS 미생성 — 이관 영상은 원본 직접 재생).
+// 이미지가 sharp로 안 열리면(HEIC 등) ffmpeg로 프레임 추출 후 webp 변환.
+export async function generateThumbnailOnly(filename: string, type: 'image' | 'video'): Promise<ProcessResult> {
+  const originalPath = path.join(DATA_DIR, 'originals', filename);
+  const thumbPath = path.join(DATA_DIR, 'thumbnails', filename + '.webp');
+
+  if (type === 'image') {
+    try {
+      const metadata = await sharp(originalPath).metadata();
+      await sharp(originalPath).rotate().resize(300, 300, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 80 }).toFile(thumbPath);
+      return { width: metadata.width, height: metadata.height };
+    } catch {
+      // sharp 실패 → ffmpeg 폴백
+      const tmp = path.join(DATA_DIR, 'thumbnails', filename + '_tmp.jpg');
+      try {
+        await execFileAsync('ffmpeg', ['-i', originalPath, '-vframes', '1', '-vf', 'scale=300:-1', '-y', tmp], FF_OPTS);
+        await sharp(tmp).webp({ quality: 80 }).toFile(thumbPath);
+      } finally {
+        if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
+      }
+      return {};
+    }
+  }
+
+  const info = await probeVideo(originalPath);
+  const tmpFrame = path.join(DATA_DIR, 'thumbnails', filename + '_tmp.jpg');
+  try {
+    await execFileAsync('ffmpeg', ['-i', originalPath, '-vframes', '1', '-vf', 'scale=300:-1', '-y', tmpFrame], FF_OPTS);
+    await sharp(tmpFrame).webp({ quality: 80 }).toFile(thumbPath);
+  } finally {
+    if (fs.existsSync(tmpFrame)) fs.unlinkSync(tmpFrame);
+  }
+  return { width: info.width, height: info.height, duration: info.duration };
+}
+
 // 기존 영상 HLS 재생성용 (마이그레이션 스크립트에서 사용). 원본/DB는 건드리지 않는다.
 export async function regenerateHls(filename: string): Promise<'transcoded' | 'copied'> {
   const originalPath = path.join(DATA_DIR, 'originals', filename);

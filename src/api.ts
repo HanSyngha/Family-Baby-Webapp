@@ -60,6 +60,47 @@ export interface MediaItem {
   favorited: boolean;
   viewers: { userId: number; name: string; profileImage: string | null }[];
   downloaders: { userId: number; name: string; profileImage: string | null }[];
+  takenAt?: string | null;
+  visibility?: 'shared' | 'private';
+  ownerId?: number | null;
+  lat?: number | null;
+  lng?: number | null;
+  livePhotoGroup?: string | null;
+  placeId?: number | null;
+  place?: string | null;
+}
+
+export interface TripPlace {
+  id: number;
+  name: string;
+  lat: number | null;
+  lng: number | null;
+  startAt: string | null;
+  endAt: string | null;
+  sortOrder: number;
+  items?: MediaItem[];
+}
+
+export interface Album {
+  id: number;
+  kind: 'seol' | 'trip';
+  title: string;
+  color: string;
+  coverMediaId: number | null;
+  coverId?: number | null;
+  startDate: string | null;
+  endDate: string | null;
+  sortOrder: number;
+  itemCount?: number;
+}
+
+export interface PlaceSuggestion {
+  suggestedName: string;
+  lat: number;
+  lng: number;
+  startAt: string;
+  endAt: string;
+  mediaIds: number[];
 }
 
 export interface Comment {
@@ -398,21 +439,22 @@ export const api = {
   getAdminActivity: () => request<any[]>('/admin/activity'),
 
   // Media (Gallery)
-  getMedia: (cursor?: string | null, sort?: string) => {
+  getMedia: (cursor?: string | null, sort?: string, scope?: string) => {
     const params = new URLSearchParams();
     if (cursor) params.set('cursor', cursor);
     if (sort) params.set('sort', sort);
+    if (scope) params.set('scope', scope);
     const qs = params.toString();
     return request<{ items: MediaItem[]; nextCursor: string | null }>(
       `/media${qs ? `?${qs}` : ''}`,
     );
   },
   getMediaDetail: (id: number) => request<MediaItem>(`/media/${id}`),
-  getMediaIds: () => request<{ items: { id: number; filename: string; type: string; createdAt: string }[] }>('/media/ids'),
-  uploadFile: (file: File, onProgress?: (pct: number) => void) => {
+  getMediaIds: (scope?: string) => request<{ items: { id: number; filename: string; type: string; createdAt: string }[] }>(`/media/ids${scope ? `?scope=${scope}` : ''}`),
+  uploadFile: (file: File, onProgress?: (pct: number) => void, visibility?: string) => {
     return new Promise<{ ok: boolean; filename?: string; duplicate?: boolean }>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${BASE}/media/upload`);
+      xhr.open('POST', `${BASE}/media/upload${visibility ? `?visibility=${visibility}` : ''}`);
       xhr.withCredentials = true;
       xhr.setRequestHeader('X-App-Mode', IS_PWA ? 'pwa' : 'browser');
       xhr.upload.onprogress = (e) => {
@@ -466,6 +508,12 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ createdAt }),
     }),
+  // 개인 사진 메타 수정: 시간(takenAt) / 장소(place)
+  updateMediaMeta: (id: number, data: { takenAt?: string; place?: string }) =>
+    request<{ ok: boolean; createdAt: string; takenAt: string | null; place: string | null }>(`/media/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
   deleteMedia: (id: number) => request<{ ok: boolean }>(`/media/${id}`, { method: 'DELETE' }),
 
   // 갤러리 이벤트 자막
@@ -474,6 +522,21 @@ export const api = {
   updateGalleryEvent: (id: number, e: GalleryEventInput) => request<GalleryEvent>(`/gallery-events/${id}`, { method: 'PATCH', body: JSON.stringify(e) }),
   deleteGalleryEvent: (id: number) => request<{ ok: boolean }>(`/gallery-events/${id}`, { method: 'DELETE' }),
   applyEventToPeanut: (id: number) => request<{ ok: boolean }>(`/gallery-events/${id}/apply-to-peanut`, { method: 'POST' }),
+
+  // 앨범(여행) + 장소 + 멤버십
+  getAlbums: (kind = 'trip') => request<{ items: Album[] }>(`/albums?kind=${kind}`),
+  getAlbum: (id: number) => request<{ album: Album; places: TripPlace[]; unplaced: MediaItem[] }>(`/albums/${id}`),
+  createAlbum: (title: string, color?: string, kind = 'trip') => request<Album>('/albums', { method: 'POST', body: JSON.stringify({ title, color, kind }) }),
+  updateAlbum: (id: number, patch: Partial<{ title: string; color: string; coverMediaId: number | null; sortOrder: number }>) => request<Album>(`/albums/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deleteAlbum: (id: number) => request<{ ok: boolean }>(`/albums/${id}`, { method: 'DELETE' }),
+  addAlbumItems: (id: number, mediaIds: number[], placeId?: number | null) => request<{ ok: boolean; added: number }>(`/albums/${id}/items`, { method: 'POST', body: JSON.stringify({ mediaIds, placeId }) }),
+  removeAlbumItems: (id: number, mediaIds: number[]) => request<{ ok: boolean }>(`/albums/${id}/items`, { method: 'DELETE', body: JSON.stringify({ mediaIds }) }),
+  createPlace: (albumId: number, name: string, lat?: number, lng?: number) => request<TripPlace>(`/albums/${albumId}/places`, { method: 'POST', body: JSON.stringify({ name, lat, lng }) }),
+  createPlacesBulk: (albumId: number, places: { name: string; lat?: number; lng?: number; mediaIds: number[] }[]) => request<{ ok: boolean }>(`/albums/${albumId}/places/bulk`, { method: 'POST', body: JSON.stringify({ places }) }),
+  updatePlace: (id: number, patch: Partial<{ name: string; lat: number; lng: number; sortOrder: number }>) => request<TripPlace>(`/places/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deletePlace: (id: number) => request<{ ok: boolean }>(`/places/${id}`, { method: 'DELETE' }),
+  suggestPlaces: (mediaIds: number[]) => request<{ clusters: PlaceSuggestion[]; noGpsMediaIds: number[] }>('/albums/suggest-places', { method: 'POST', body: JSON.stringify({ mediaIds }) }),
+  promoteToShared: (mediaIds: number[], albumId?: number | null) => request<{ ok: boolean; promoted: number; addedToAlbum: number }>('/media/promote-to-shared', { method: 'POST', body: JSON.stringify({ mediaIds, albumId }) }),
   copyToPeanut: (ids: number[]) =>
     request<{ copied: number; duplicates: number; errors: string[] }>(
       '/media/copy-to-peanut',

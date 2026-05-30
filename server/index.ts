@@ -7,6 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import { registerAuthRoutes } from './auth.js';
 import { registerMediaRoutes } from './routes/media.js';
+import { registerAlbumRoutes } from './routes/album.js';
 import { registerInteractionRoutes } from './routes/interaction.js';
 import { registerUserRoutes } from './routes/user.js';
 import { registerPushRoutes } from './push.js';
@@ -41,6 +42,7 @@ app.addHook('onSend', (request, reply, _payload, done) => {
 // API 라우트 등록
 registerAuthRoutes(app);
 registerMediaRoutes(app);
+registerAlbumRoutes(app);
 registerInteractionRoutes(app);
 registerUserRoutes(app);
 registerPushRoutes(app);
@@ -119,7 +121,13 @@ function cleanupOrphanFiles() {
   }
 }
 
-setInterval(cleanupOrphanFiles, 30 * 60 * 1000);
+// 고아 파일 정리(미디어 테이블에 없는 originals 삭제). 이관 중에는 '복사됐지만 아직 INSERT 안 된'
+// 파일을 고아로 오인해 지우므로 기본 비활성. 이관 완료 후 env로 재활성 가능.
+if (process.env.ENABLE_ORPHAN_CLEANUP === 'true') {
+  setInterval(cleanupOrphanFiles, 30 * 60 * 1000);
+} else {
+  console.log('[Cleanup] Orphan file cleanup disabled (set ENABLE_ORPHAN_CLEANUP=true to enable)');
+}
 
 // LLM Health Check 시작 (active config 있으면 5초 주기)
 startHealthCheck();

@@ -10,6 +10,8 @@ interface QueueItem {
   size: number;
   uploaderId: number;
   hash: string;
+  visibility?: string;
+  ownerId?: number | null;
 }
 
 interface RecentResult {
@@ -59,8 +61,8 @@ async function processNext() {
 
     const nowKst = new Date(Date.now() + 9 * 3600000).toISOString().replace('T', ' ').slice(0, 19);
     db.prepare(`
-      INSERT INTO media (uploaderId, filename, originalName, mimeType, type, size, width, height, duration, hash, createdAt, uploadedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO media (uploaderId, filename, originalName, mimeType, type, size, width, height, duration, hash, createdAt, uploadedAt, takenAt, visibility, ownerId)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       item.uploaderId,
       item.filename,
@@ -74,6 +76,9 @@ async function processNext() {
       item.hash,
       result.takenAt ?? nowKst,
       nowKst,
+      result.takenAt ?? null,
+      item.visibility ?? 'shared',
+      item.ownerId ?? null,
     );
 
     console.log(`[Queue] DB inserted: ${item.originalName} | remaining: ${queue.length}`);
