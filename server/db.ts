@@ -496,6 +496,22 @@ try { db.exec('ALTER TABLE sleeps ADD COLUMN isAutoSleep INTEGER DEFAULT 0'); } 
 try { db.exec('ALTER TABLE comments ADD COLUMN parentId INTEGER REFERENCES comments(id) ON DELETE CASCADE'); } catch {}
 try { db.exec('ALTER TABLE comments ADD COLUMN editedAt TEXT'); } catch {}
 
+// ============================================================
+// 기기 세션 (영속 로그인 + 네이티브 백그라운드 백업용 refresh token)
+// 비파괴. refresh token 평문은 저장하지 않고 SHA-256 해시(tokenHash)만 보관.
+// 기기 분실 시 revokedAt를 채워 원격 로그아웃.
+// ============================================================
+db.exec(`CREATE TABLE IF NOT EXISTS device_sessions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  userId      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  tokenHash   TEXT NOT NULL UNIQUE,
+  deviceName  TEXT,
+  createdAt   TEXT DEFAULT (datetime('now', '+9 hours')),
+  lastUsedAt  TEXT,
+  revokedAt   TEXT
+)`);
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_device_sessions_user ON device_sessions(userId)'); } catch {}
+
 // 갤러리 이벤트 자막 (날짜 범위 → 'N일차' 자동). 앱별 독립 보관.
 try {
   db.exec(`CREATE TABLE IF NOT EXISTS gallery_events (
