@@ -409,7 +409,7 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
         {/* 개인 공간 안내 */}
         {isPrivate && (
           <div className={styles.privateHint}>
-            여기에 올린 뒤, 선택해서 <b>땅땅&콩콩 · 여행 · 땅콩땅콩</b>에 공유하세요
+            여기에 올린 뒤, 선택해서 <b>땅땅&콩콩 · 여행 · 땅콩땅콩 · Peanut World</b>에 공유하세요
           </div>
         )}
 
