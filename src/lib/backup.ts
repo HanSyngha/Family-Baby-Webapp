@@ -68,6 +68,11 @@ export async function syncBackupAuth(user: User): Promise<void> {
       await backup.setAuth({ refreshToken: null });
       return;
     }
+    // 이미 토큰이 있으면 재등록하지 않는다. 매 실행마다 등록하면 앱을 열 때마다 서버에
+    // 기기 세션이 하나씩 쌓인다(실제로 1,700개까지 불어남). 토큰이 서버에서 폐기되면
+    // 네이티브 워커가 401을 받고 저장 토큰을 지우므로 다음 실행 때 여기서 다시 등록된다.
+    const { hasAuth } = await backup.getStatus();
+    if (hasAuth) return;
     const deviceName = (navigator.userAgent || 'Android').slice(0, 60);
     const { refreshToken } = await api.registerDevice(deviceName);
     await backup.setAuth({ refreshToken });

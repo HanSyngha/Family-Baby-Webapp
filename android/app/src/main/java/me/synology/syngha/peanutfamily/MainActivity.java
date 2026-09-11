@@ -19,6 +19,16 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
 
         WebView webView = getBridge().getWebView();
+
+        // 카카오 로그인 페이지는 UA의 "; wv" 표식으로 WebView를 감지하면 "카카오톡으로 로그인" 버튼을
+        // 아예 내려주지 않고 계정 입력만 보여준다(크롬 UA와 대조 실측). 그래서 앱에서는 매번 아이디를 쳐야 했다.
+        // 표식만 벗겨 일반 크롬 모바일과 같은 UA로 맞춘다(버전 문자열은 WebView 것을 그대로 유지).
+        try {
+            String ua = webView.getSettings().getUserAgentString();
+            webView.getSettings().setUserAgentString(ua.replace("; wv", "").replace("Version/4.0 ", ""));
+        } catch (Exception ignored) {
+        }
+
         webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
             try {
                 DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
@@ -42,6 +52,17 @@ public class MainActivity extends BridgeActivity {
                 Toast.makeText(this, "다운로드를 시작하지 못했어요", Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    // WebView 쿠키(fauth/frefresh)는 메모리에서 디스크로 주기적으로만 내려간다. 삼성 절전·스와이프 종료로
+    // 프로세스가 강제 종료되면 최근 갱신분이 유실돼 다음 실행 때 로그인이 풀리므로 백그라운드 진입 시 즉시 flush.
+    @Override
+    public void onPause() {
+        super.onPause();
+        try {
+            CookieManager.getInstance().flush();
+        } catch (Exception ignored) {
+        }
     }
 
     @Override
