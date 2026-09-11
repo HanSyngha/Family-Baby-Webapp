@@ -5,6 +5,7 @@ import Calendar from './Calendar';
 import Todos from './Todos';
 import Notes from './Notes';
 import styles from './Life.module.css';
+import Icon, { type IconName } from '../components/ui/Icon';
 
 interface Props {
   user: User;
@@ -12,10 +13,10 @@ interface Props {
 
 type SubTab = 'calendar' | 'todos' | 'notes';
 
-const SUB_TABS: { value: SubTab; label: string; icon: string }[] = [
-  { value: 'calendar', label: '캘린더', icon: '📅' },
-  { value: 'todos', label: '할일', icon: '✅' },
-  { value: 'notes', label: '노트', icon: '📝' },
+const SUB_TABS: { value: SubTab; label: string; icon: IconName }[] = [
+  { value: 'calendar', label: '캘린더', icon: 'calendar' },
+  { value: 'todos', label: '할일', icon: 'check-square' },
+  { value: 'notes', label: '노트', icon: 'note' },
 ];
 
 export default function Life({ user }: Props) {
@@ -54,7 +55,7 @@ export default function Life({ user }: Props) {
               className={`${styles.subTab} ${activeTab === value ? styles.subTabActive : ''}`}
               onClick={() => setActiveTab(value)}
             >
-              <span className={styles.subTabIcon}>{icon}</span>
+              <Icon name={icon} size={16} className={styles.subTabIcon} />
               {label}
             </button>
           ))}

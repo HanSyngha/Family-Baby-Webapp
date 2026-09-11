@@ -10,7 +10,7 @@ interface Props {
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 const EVENT_COLORS = [
-  '#007AFF', // Blue
+  'var(--color-primary)', // Blue
   '#FF3B30', // Red
   '#FF9F0A', // Orange
   '#FFCC00', // Yellow

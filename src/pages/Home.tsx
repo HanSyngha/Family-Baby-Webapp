@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, type User, type HomeSummary } from '../api';
 import styles from './Home.module.css';
+import Icon from '../components/ui/Icon';
 
 interface Props {
   user: User;
@@ -16,6 +17,20 @@ function timeAgo(dateStr: string): string {
   const diffH = Math.floor(diffMin / 60);
   if (diffH < 24) return `${diffH}시간 전`;
   return `${Math.floor(diffH / 24)}일 전`;
+}
+
+// 787분처럼 단위 없이 큰 수를 던지지 않는다. 사람이 읽는 단위로 바꾼다.
+function fmtDuration(min: number): string {
+  if (!min) return '0분';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (!h) return `${m}분`;
+  return m ? `${h}시간 ${m}분` : `${h}시간`;
+}
+
+function daysSince(birthDate: string): number {
+  const bd = new Date(birthDate);
+  return Math.floor((Date.now() - bd.getTime()) / 86400000) + 1;
 }
 
 function babyAge(birthDate: string): string {
@@ -136,20 +151,25 @@ export default function Home({ user }: Props) {
       {babySummaries.map((bs) => (
         <div key={bs.babyId} className={`${styles.card} ${styles.cardStagger1}`} onClick={() => navigate('/parenting')}>
           <div className={styles.cardHeader}>
-            <span className={styles.cardIcon}>👶</span>
+            <Icon name="baby" size={19} className={styles.cardIcon} />
             <span className={styles.cardTitle}>{bs.babyName}</span>
-            {bs.babyBirthDate && (
-              <span className={styles.cardBadge}>{babyAge(bs.babyBirthDate)}</span>
-            )}
             <span className={styles.cardArrow}>›</span>
           </div>
+
+          {bs.babyBirthDate && (
+            <div className={styles.babyDays}>
+              <span className={styles.babyDaysNum}>{daysSince(bs.babyBirthDate)}</span>
+              <span className={styles.babyDaysUnit}>일째</span>
+              <span className={styles.babyDaysAge}>{babyAge(bs.babyBirthDate)}</span>
+            </div>
+          )}
 
           {/* Quick Breast Feeding inside baby card */}
           <div className={styles.quickFeedingInCard}>
             {breastActive ? (
               <button className={styles.quickFeedingActive} onClick={(e) => { e.stopPropagation(); navigate('/parenting'); }}>
                 <span className={styles.quickFeedingPulse} />
-                <span className={styles.quickFeedingIcon}>🤱</span>
+                <Icon name="breast" size={19} className={styles.quickFeedingIcon} />
                 <span className={styles.quickFeedingText}>
                   수유 중 ({breastActive.side === 'left' ? '왼쪽' : '오른쪽'})
                 </span>
@@ -158,37 +178,28 @@ export default function Home({ user }: Props) {
             ) : (
               <div className={styles.quickFeedingBtns}>
                 <button className={styles.quickFeedingBtn} onClick={(e) => { e.stopPropagation(); startBreast('left'); }}>
-                  <span className={styles.quickFeedingIcon}>🤱</span>
+                  <Icon name="breast" size={19} className={styles.quickFeedingIcon} />
                   <span className={styles.quickFeedingLabel}>왼쪽 시작</span>
                 </button>
                 <button className={styles.quickFeedingBtn} onClick={(e) => { e.stopPropagation(); startBreast('right'); }}>
-                  <span className={styles.quickFeedingIcon}>🤱</span>
+                  <Icon name="breast" size={19} className={styles.quickFeedingIcon} />
                   <span className={styles.quickFeedingLabel}>오른쪽 시작</span>
                 </button>
               </div>
             )}
           </div>
 
-          <div className={styles.babyStats}>
-            <div className={styles.babyStat}>
-              <div className={styles.babyStatValue}>{bs.todayFeedingCount}</div>
-              <div className={styles.babyStatLabel}>수유</div>
-            </div>
-            <div className={styles.babyStat}>
-              <div className={styles.babyStatValue}>{bs.totalFormulaMl}<span className={styles.babyStatUnit}>ml</span></div>
-              <div className={styles.babyStatLabel}>분유</div>
-            </div>
-            <div className={styles.babyStat}>
-              <div className={styles.babyStatValue}>{bs.totalSleepMin}<span className={styles.babyStatUnit}>분</span></div>
-              <div className={styles.babyStatLabel}>수면</div>
-            </div>
+          <div className={styles.babyToday}>
+            오늘 수유 {bs.todayFeedingCount}회
+            {bs.totalFormulaMl > 0 && <> · 분유 {bs.totalFormulaMl}ml</>}
+            {bs.totalSleepMin > 0 && <> · 잠 {fmtDuration(bs.totalSleepMin)}</>}
           </div>
 
           {(bs.lastFeeding || bs.lastSleep) && (
             <div className={styles.babyRecent}>
               {bs.lastFeeding && (
                 <div className={styles.babyRecentItem}>
-                  <span className={styles.babyRecentIcon}>🍼</span>
+                  <Icon name="bottle" size={16} className={styles.babyRecentIcon} />
                   <span className={styles.babyRecentText}>
                     마지막 수유 {timeAgo(bs.lastFeeding.startedAt)}
                     {bs.lastFeeding.type === 'formula' && bs.lastFeeding.amountMl
@@ -200,7 +211,7 @@ export default function Home({ user }: Props) {
               )}
               {bs.lastSleep && (
                 <div className={styles.babyRecentItem}>
-                  <span className={styles.babyRecentIcon}>💤</span>
+                  <Icon name="moon" size={16} className={styles.babyRecentIcon} />
                   <span className={styles.babyRecentText}>
                     {bs.lastSleep.endedAt
                       ? `마지막 수면 ${timeAgo(bs.lastSleep.endedAt)} · ${bs.lastSleep.durationSec ? Math.floor(bs.lastSleep.durationSec / 60) + '분' : ''}`
@@ -216,12 +227,12 @@ export default function Home({ user }: Props) {
             <div className={styles.predictions}>
               {bs.feedingPrediction && (
                 <div className={styles.predictionChip}>
-                  🍼 다음 수유 <strong>{bs.feedingPrediction.predictedAt.split(' ')[1]?.slice(0, 5) || bs.feedingPrediction.predictedAt}</strong>
+                  <Icon name="bottle" size={14} /> 다음 수유 <strong>{bs.feedingPrediction.predictedAt.split(' ')[1]?.slice(0, 5) || bs.feedingPrediction.predictedAt}</strong>
                 </div>
               )}
               {bs.sleepPrediction && (
                 <div className={styles.predictionChip}>
-                  💤 다음 수면 <strong>{bs.sleepPrediction.predictedAt.split(' ')[1]?.slice(0, 5) || bs.sleepPrediction.predictedAt}</strong>
+                  <Icon name="moon" size={14} /> 다음 수면 <strong>{bs.sleepPrediction.predictedAt.split(' ')[1]?.slice(0, 5) || bs.sleepPrediction.predictedAt}</strong>
                 </div>
               )}
             </div>
@@ -233,15 +244,13 @@ export default function Home({ user }: Props) {
       {upcomingBirthdays.length > 0 && (
         <div className={`${styles.card} ${styles.cardStagger2}`}>
           <div className={styles.cardHeader}>
-            <span className={styles.cardIcon}>🎂</span>
+            <Icon name="cake" size={19} className={styles.cardIcon} />
             <span className={styles.cardTitle}>생일</span>
           </div>
           <div className={styles.birthdayList}>
             {upcomingBirthdays.map((b, i) => (
               <div key={i} className={styles.birthdayItem}>
-                <div className={styles.birthdayEmoji}>
-                  {b.type === 'baby' ? '👶' : b.daysUntil === 0 ? '🎉' : '🎂'}
-                </div>
+                <Icon name={b.type === 'baby' ? 'baby' : 'cake'} size={17} className={styles.birthdayIcon} />
                 <div className={styles.birthdayInfo}>
                   <div className={styles.birthdayName}>{b.name}</div>
                   <div className={styles.birthdayDate}>{b.monthDay}</div>
@@ -261,7 +270,7 @@ export default function Home({ user }: Props) {
       {/* Today's Events */}
       <div className={`${styles.card} ${styles.cardStagger3}`} onClick={() => navigate('/life', { state: { tab: 'calendar' } })}>
         <div className={styles.cardHeader}>
-          <span className={styles.cardIcon}>📅</span>
+          <Icon name="calendar" size={19} className={styles.cardIcon} />
           <span className={styles.cardTitle}>오늘 일정</span>
           <span className={styles.cardArrow}>›</span>
         </div>
@@ -271,7 +280,7 @@ export default function Home({ user }: Props) {
           <div className={styles.eventList}>
             {todayEvents.map((evt, i) => (
               <div key={`today-${i}`} className={styles.eventItem}>
-                <div className={styles.eventDot} style={{ background: evt.color || '#007AFF' }} />
+                <div className={styles.eventDot} style={{ background: evt.color || 'var(--color-primary)' }} />
                 <div className={styles.eventTitle}>{evt.title}</div>
                 <div className={styles.eventTime}>{formatEventTime(evt.startAt, evt.allDay)}</div>
               </div>
@@ -284,14 +293,14 @@ export default function Home({ user }: Props) {
       {upcomingEvents.length > 0 && (
         <div className={`${styles.card} ${styles.cardStagger4}`} onClick={() => navigate('/life', { state: { tab: 'calendar' } })}>
           <div className={styles.cardHeader}>
-            <span className={styles.cardIcon}>📋</span>
+            <Icon name="clipboard" size={19} className={styles.cardIcon} />
             <span className={styles.cardTitle}>다가오는 일정</span>
             <span className={styles.cardArrow}>›</span>
           </div>
           <div className={styles.eventList}>
             {upcomingEvents.slice(0, 5).map((evt, i) => (
               <div key={`upcoming-${i}`} className={styles.eventItem}>
-                <div className={styles.eventDot} style={{ background: evt.color || '#007AFF' }} />
+                <div className={styles.eventDot} style={{ background: evt.color || 'var(--color-primary)' }} />
                 <div className={styles.eventTitle}>{evt.title}</div>
                 <div className={styles.eventDate}>{formatEventDate(evt.startAt)}</div>
               </div>
@@ -303,21 +312,14 @@ export default function Home({ user }: Props) {
       {/* Todo Summary */}
       <div className={`${styles.card} ${styles.cardStagger5}`} onClick={() => navigate('/life', { state: { tab: 'todos' } })}>
         <div className={styles.cardHeader}>
-          <span className={styles.cardIcon}>✅</span>
+          <Icon name="check-square" size={19} className={styles.cardIcon} />
           <span className={styles.cardTitle}>할 일</span>
           <span className={styles.cardArrow}>›</span>
         </div>
-        <div className={styles.todoStats}>
-          <div className={styles.todoStat}>
-            <div className={styles.todoStatValue}>{todoSummary.activeCount}</div>
-            <div className={styles.todoStatLabel}>진행 중</div>
-          </div>
-          {todoSummary.overdueCount > 0 && (
-            <div className={`${styles.todoStat} ${styles.todoStatOverdue}`}>
-              <div className={styles.todoStatValue}>{todoSummary.overdueCount}</div>
-              <div className={styles.todoStatLabel}>마감 지남</div>
-            </div>
-          )}
+        <div className={styles.todoLine}>
+          {todoSummary.activeCount === 0 && todoSummary.overdueCount === 0
+            ? '남은 할 일이 없어요'
+            : <>진행 중 {todoSummary.activeCount}개{todoSummary.overdueCount > 0 && <span className={styles.todoOverdue}> · 마감 지남 {todoSummary.overdueCount}개</span>}</>}
         </div>
       </div>
     </div>

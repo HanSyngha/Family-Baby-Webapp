@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api, type User, type Baby, type Feeding, type Sleep, type Diaper, type BabySummary, type BabyObservation, type BabyChatMessage, type VaccineItem, type VaccinationCompletion, type GrowthRecord, type WHOStandards } from '../api';
 import styles from './Parenting.module.css';
+import Icon, { type IconName } from '../components/ui/Icon';
 
 interface Props {
   user: User;
@@ -11,17 +12,25 @@ type FeedingType = 'formula' | 'breast';
 type Side = 'left' | 'right';
 type DiaperType = 'pee' | 'poop' | 'both';
 
-const SUB_TABS: { value: SubTab; label: string; icon: string }[] = [
-  { value: 'feeding', label: '수유', icon: '🍼' },
-  { value: 'sleep', label: '수면', icon: '💤' },
-  { value: 'diaper', label: '기저귀', icon: '🧷' },
-  { value: 'vaccination', label: '접종', icon: '💉' },
-  { value: 'growth', label: '성장', icon: '📏' },
-  { value: 'observations', label: '특이사항', icon: '📋' },
-  { value: 'chat', label: '상담', icon: '💬' },
+const SUB_TABS: { value: SubTab; label: string; icon: IconName }[] = [
+  { value: 'feeding', label: '수유', icon: 'bottle' },
+  { value: 'sleep', label: '수면', icon: 'moon' },
+  { value: 'diaper', label: '기저귀', icon: 'diaper' },
+  { value: 'vaccination', label: '접종', icon: 'syringe' },
+  { value: 'growth', label: '성장', icon: 'ruler' },
+  { value: 'observations', label: '특이사항', icon: 'clipboard' },
+  { value: 'chat', label: '상담', icon: 'chat' },
 ];
 
 function pad(n: number) { return n.toString().padStart(2, '0'); }
+
+// 787분처럼 단위 없는 큰 수 대신 사람이 읽는 단위로
+function fmtDuration(min: number): string {
+  if (!min) return '0분';
+  const h = Math.floor(min / 60), m = min % 60;
+  if (!h) return `${m}분`;
+  return m ? `${h}시간 ${m}분` : `${h}시간`;
+}
 
 function nowKST(): string {
   const d = new Date();
@@ -80,6 +89,7 @@ export default function Parenting({ user }: Props) {
   const [summary, setSummary] = useState<BabySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [predicting, setPredicting] = useState(false);
+  const [showReason, setShowReason] = useState(false);  // LLM 근거는 기본으로 접어둔다
 
   // Formula modal
   const [showFormulaModal, setShowFormulaModal] = useState(false);
@@ -680,57 +690,47 @@ export default function Parenting({ user }: Props) {
     if (!summary) return null;
     const { today, prediction } = summary;
     const activePrediction = activeTab === 'feeding' ? prediction.feeding : activeTab === 'diaper' ? prediction.diaper : prediction.sleep;
-    const predIcon = activeTab === 'feeding' ? '🍼' : activeTab === 'diaper' ? '🧷' : '💤';
+    const predIcon: IconName = activeTab === 'feeding' ? 'bottle' : activeTab === 'diaper' ? 'diaper' : 'moon';
     const predLabel = activeTab === 'feeding' ? '수유' : activeTab === 'diaper' ? '기저귀' : '수면';
 
+    // 0 / 0ml / 787분 타일 대신 한 줄. 0인 항목은 아예 말하지 않는다.
     const summaryItems = activeTab === 'diaper' ? (
-      <>
-        <div className={styles.summaryItem}>
-          <div className={styles.summaryValue}>{today.diaperCount}</div>
-          <div className={styles.summaryLabel}>기저귀 총</div>
-        </div>
-        <div className={styles.summaryItem}>
-          <div className={styles.summaryValue}>{today.peeCount}</div>
-          <div className={styles.summaryLabel}>소변</div>
-        </div>
-        <div className={styles.summaryItem}>
-          <div className={styles.summaryValue}>{today.poopCount}</div>
-          <div className={styles.summaryLabel}>대변</div>
-        </div>
+      <>오늘 기저귀 {today.diaperCount}번
+        {today.peeCount > 0 && <> · 소변 {today.peeCount}</>}
+        {today.poopCount > 0 && <> · 대변 {today.poopCount}</>}
       </>
     ) : (
-      <>
-        <div className={styles.summaryItem}>
-          <div className={styles.summaryValue}>{today.feedingCount}</div>
-          <div className={styles.summaryLabel}>수유 횟수</div>
-        </div>
-        <div className={styles.summaryItem}>
-          <div className={styles.summaryValue}>{today.totalFormulaMl}<span style={{ fontSize: 13, fontWeight: 500 }}>ml</span></div>
-          <div className={styles.summaryLabel}>분유 총량</div>
-        </div>
-        <div className={styles.summaryItem}>
-          <div className={styles.summaryValue}>{today.totalSleepMin}<span style={{ fontSize: 13, fontWeight: 500 }}>분</span></div>
-          <div className={styles.summaryLabel}>수면 시간</div>
-        </div>
+      <>오늘 수유 {today.feedingCount}회
+        {today.totalFormulaMl > 0 && <> · 분유 {today.totalFormulaMl}ml</>}
+        {today.totalSleepMin > 0 && <> · 잠 {fmtDuration(today.totalSleepMin)}</>}
       </>
     );
 
     return (
       <div className={styles.summaryCard}>
-        <div className={styles.summaryGrid}>
+        <div className={styles.summaryLine}>
           {summaryItems}
         </div>
         <div className={styles.summaryDivider} />
         <div className={styles.predictionRow}>
-          <span className={styles.predictionIcon}>{predIcon}</span>
+          <Icon name={predIcon} size={16} className={styles.predictionIcon} />
           {activePrediction ? (
-            <span className={styles.predictionText}>
-              다음 {predLabel} 예상:{' '}
-              <span className={styles.predictionTime}>{activePrediction.predictedAt.split(' ')[1] || activePrediction.predictedAt}</span>
-              {' '}{activePrediction.reasoning}
-            </span>
+            <button
+              type="button"
+              className={styles.predictionText}
+              onClick={() => setShowReason(v => !v)}
+              aria-expanded={showReason}
+            >
+              <span>
+                다음 {predLabel}{' '}
+                <span className={styles.predictionTime}>{(activePrediction.predictedAt.split(' ')[1] || activePrediction.predictedAt).slice(0, 5)}</span>쯤
+              </span>
+              {activePrediction.reasoning && (
+                <span className={styles.predictionWhy}>{showReason ? '이유 접기' : '이유 보기'}</span>
+              )}
+            </button>
           ) : (
-            <span className={styles.predictionText}>예측 데이터 없음</span>
+            <span className={styles.predictionText}>아직 예측할 기록이 부족해요</span>
           )}
           <button
             className={`${styles.predictionRefresh} ${predicting ? styles.predictionRefreshSpin : ''}`}
@@ -744,6 +744,9 @@ export default function Parenting({ user }: Props) {
             </svg>
           </button>
         </div>
+        {showReason && activePrediction?.reasoning && (
+          <p className={styles.predictionReason}>{activePrediction.reasoning}</p>
+        )}
       </div>
     );
   };
@@ -764,7 +767,7 @@ export default function Parenting({ user }: Props) {
             <div className={`${styles.timerCircle} ${styles.timerCircleFeeding} ${breastTimer.isPaused ? styles.timerCirclePaused : ''}`}>
               <span className={styles.timerTime}>{formatTimerDisplay(breastElapsed)}</span>
             </div>
-            <div className={styles.timerSide}>🤱 {breastTimer.side === 'left' ? '왼쪽' : '오른쪽'}</div>
+            <div className={styles.timerSide}><Icon name="breast" size={16} /> {breastTimer.side === 'left' ? '왼쪽' : '오른쪽'}</div>
             <div className={styles.timerBtnGroup}>
               {breastTimer.isPaused ? (
                 <button className={styles.timerResumeBtn} onClick={resumeBreastTimer}>재개</button>
@@ -784,12 +787,12 @@ export default function Parenting({ user }: Props) {
       <>
         <div className={styles.quickActions}>
           <button className={styles.actionBtn} onClick={openFormulaModal}>
-            <span className={styles.actionBtnIcon}>🍼</span>
+            <Icon name="bottle" size={22} className={styles.actionBtnIcon} />
             <span className={styles.actionBtnLabel}>분유</span>
             <span className={styles.actionBtnSub}>{formulaAmount}ml</span>
           </button>
           <button className={styles.actionBtn} onClick={openBreastModal}>
-            <span className={styles.actionBtnIcon}>🤱</span>
+            <Icon name="breast" size={22} className={styles.actionBtnIcon} />
             <span className={styles.actionBtnLabel}>모유</span>
             <span className={styles.actionBtnSub}>수유 기록</span>
           </button>
@@ -805,7 +808,7 @@ export default function Parenting({ user }: Props) {
         <>
           <div className={styles.sectionTitle}>수유 기록</div>
           <div className={styles.emptyState}>
-            <div className={styles.emptyStateIcon}>🍼</div>
+            <div className={styles.emptyStateIcon}><Icon name="bottle" size={32} /></div>
             <div className={styles.emptyStateText}>아직 수유 기록이 없어요</div>
           </div>
         </>
@@ -885,7 +888,7 @@ export default function Parenting({ user }: Props) {
                         </div>
                         <div className={styles.timelineContent}>
                           <div className={styles.timelineTitle}>
-                            {f.type === 'formula' ? `🍼 분유 ${f.amountMl}ml` : `🤱 모유 (${f.side === 'left' ? '왼쪽' : '오른쪽'})`}
+                            {f.type === 'formula' ? `분유 ${f.amountMl}ml` : `모유 (${f.side === 'left' ? '왼쪽' : '오른쪽'})`}
                           </div>
                           <div className={styles.timelineDetail}>
                             {f.type === 'breast' && f.durationSec ? formatDuration(f.durationSec) + ' · ' : ''}
@@ -952,12 +955,12 @@ export default function Parenting({ user }: Props) {
   // ============================================================
 
   const DIAPER_COLORS = [
-    { value: 'yellow', label: '노란색', emoji: '🟡' },
-    { value: 'green', label: '녹색', emoji: '🟢' },
-    { value: 'brown', label: '갈색', emoji: '🟤' },
-    { value: 'black', label: '검정', emoji: '⚫' },
-    { value: 'red', label: '빨강', emoji: '🔴' },
-    { value: 'white', label: '흰색', emoji: '⚪' },
+    { value: 'yellow', label: '노란색', swatch: '#E8B93A' },
+    { value: 'green', label: '녹색', swatch: '#5E9B52' },
+    { value: 'brown', label: '갈색', swatch: '#8A5A2B' },
+    { value: 'black', label: '검정', swatch: '#2E2A25' },
+    { value: 'red', label: '빨강', swatch: '#C0392B' },
+    { value: 'white', label: '흰색', swatch: '#EFEAE0' },
   ];
   const DIAPER_CONSISTENCIES = [
     { value: 'watery', label: '묽음' },
@@ -969,17 +972,17 @@ export default function Parenting({ user }: Props) {
     <>
       <div className={styles.quickActions} style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
         <button className={styles.actionBtn} onClick={() => recordQuickDiaper('pee')}>
-          <span className={styles.actionBtnIcon}>💧</span>
+          <Icon name="droplet" size={22} className={styles.actionBtnIcon} />
           <span className={styles.actionBtnLabel}>소변</span>
           <span className={styles.actionBtnSub}>쉬했어요</span>
         </button>
         <button className={styles.actionBtn} onClick={() => openDiaperConditionModal('poop')}>
-          <span className={styles.actionBtnIcon}>💩</span>
+          <Icon name="stool" size={22} className={styles.actionBtnIcon} />
           <span className={styles.actionBtnLabel}>대변</span>
           <span className={styles.actionBtnSub}>응가했어요</span>
         </button>
         <button className={styles.actionBtn} onClick={() => openDiaperConditionModal('both')}>
-          <span className={styles.actionBtnIcon}>🧷</span>
+          <Icon name="diaper" size={22} className={styles.actionBtnIcon} />
           <span className={styles.actionBtnLabel}>둘 다</span>
           <span className={styles.actionBtnSub}>쉬+응가</span>
         </button>
@@ -1006,7 +1009,7 @@ export default function Parenting({ user }: Props) {
                   className={`${styles.diaperColorBtn} ${diaperColor === c.value ? styles.diaperColorBtnActive : ''}`}
                   onClick={() => setDiaperColor(c.value)}
                 >
-                  <span>{c.emoji}</span>
+                  <span className={styles.colorSwatch} style={{ background: c.swatch }} />
                   <span>{c.label}</span>
                 </button>
               ))}
@@ -1041,7 +1044,7 @@ export default function Parenting({ user }: Props) {
         <>
           <div className={styles.sectionTitle}>기저귀 기록</div>
           <div className={styles.emptyState}>
-            <div className={styles.emptyStateIcon}>🧷</div>
+            <div className={styles.emptyStateIcon}><Icon name="diaper" size={32} /></div>
             <div className={styles.emptyStateText}>아직 기저귀 기록이 없어요</div>
           </div>
         </>
@@ -1108,7 +1111,7 @@ export default function Parenting({ user }: Props) {
                   const isRemoving = removingIds.has(key);
                   const gapPx = i > 0 ? getGapPx(group.items[i - 1].changedAt, d.changedAt) : 0;
                   const gapLbl = i > 0 ? formatGap(group.items[i - 1].changedAt, d.changedAt) : '';
-                  const typeIcon = d.type === 'pee' ? '💧' : d.type === 'poop' ? '💩' : '🧷';
+                  const typeIcon: IconName = d.type === 'pee' ? 'droplet' : d.type === 'poop' ? 'stool' : 'diaper';
                   const typeText = d.type === 'pee' ? '소변' : d.type === 'poop' ? '대변' : '소변+대변';
                   const conditionParts: string[] = [];
                   if (d.color) conditionParts.push(colorLabel(d.color));
@@ -1165,7 +1168,7 @@ export default function Parenting({ user }: Props) {
       <>
         <div className={styles.quickActions}>
           <button className={styles.actionBtn} onClick={() => openSleepModal('sleep')}>
-            <span className={styles.actionBtnIcon}>😴</span>
+            <Icon name="moon" size={22} className={styles.actionBtnIcon} />
             <span className={styles.actionBtnLabel}>잠들었어요</span>
             <span className={styles.actionBtnSub}>잠든 시간 기록</span>
           </button>
@@ -1173,7 +1176,7 @@ export default function Parenting({ user }: Props) {
             className={`${styles.actionBtn} ${!unmatchedSleep ? styles.actionBtnDisabled : ''}`}
             onClick={() => unmatchedSleep ? openSleepModal('wake') : alert('먼저 잠든 시간을 기록해주세요.')}
           >
-            <span className={styles.actionBtnIcon}>☀️</span>
+            <Icon name="sun" size={22} className={styles.actionBtnIcon} />
             <span className={styles.actionBtnLabel}>깨어났어요</span>
             <span className={styles.actionBtnSub}>{unmatchedSleep ? `${formatTime(unmatchedSleep.startedAt)}부터 수면 중` : '연결할 기록 없음'}</span>
           </button>
@@ -1200,7 +1203,7 @@ export default function Parenting({ user }: Props) {
       <div className={styles.sectionTitle}>오늘 수면 기록</div>
       {sleeps.length === 0 ? (
         <div className={styles.emptyState}>
-          <div className={styles.emptyStateIcon}>💤</div>
+          <div className={styles.emptyStateIcon}><Icon name="moon" size={32} /></div>
           <div className={styles.emptyStateText}>아직 수면 기록이 없어요</div>
         </div>
       ) : (
@@ -1218,7 +1221,7 @@ export default function Parenting({ user }: Props) {
                   history.pushState({ modal: 'edit' }, '');
                 }}
               >
-                <div className={`${styles.recordIcon} ${styles.recordIconSleep}`}>😴</div>
+                <div className={`${styles.recordIcon} ${styles.recordIconSleep}`}><Icon name="moon" size={17} /></div>
                 <div className={styles.recordInfo}>
                   <div className={styles.recordTitle}>
                     {s.endedAt ? formatDuration(s.durationSec || 0) : '수면 중...'}
@@ -1463,7 +1466,7 @@ export default function Parenting({ user }: Props) {
       {/* Progress */}
       <div className={styles.vaccProgress}>
         <div className={styles.vaccProgressHeader}>
-          <span className={styles.vaccProgressTitle}>💉 접종 현황</span>
+          <span className={styles.vaccProgressTitle}><Icon name="syringe" size={17} /> 접종 현황</span>
           <span className={styles.vaccProgressCount}>{vaccCompletedCount}/{vaccSchedule.length} 완료</span>
         </div>
         <div className={styles.vaccProgressBar}>
@@ -1575,7 +1578,7 @@ export default function Parenting({ user }: Props) {
           <div className={styles.modal}>
             <div className={styles.vaccModal}>
               <div className={styles.vaccModalTitle}>
-                💉 {vaccCompleteModal.name} {vaccCompleteModal.dose}차 접종 기록
+                <Icon name="syringe" size={18} /> {vaccCompleteModal.name} {vaccCompleteModal.dose}차 접종 기록
               </div>
               <div className={styles.vaccModalField}>
                 <div className={styles.vaccModalLabel}>접종일</div>
@@ -1633,7 +1636,7 @@ export default function Parenting({ user }: Props) {
 
       {observations.length === 0 ? (
         <div className={styles.emptyState}>
-          <div className={styles.emptyStateIcon}>📋</div>
+          <div className={styles.emptyStateIcon}><Icon name="clipboard" size={32} /></div>
           <div className={styles.emptyStateText}>아직 기록된 특이사항이 없어요</div>
         </div>
       ) : (
@@ -1775,7 +1778,7 @@ export default function Parenting({ user }: Props) {
                 setPastFeeding(prev => ({ ...prev, type: 'breast', dateTime: toDatetimeLocal() }));
                 setBreastMode('past');
               }}>
-                <span className={styles.choiceBtnIcon}>📝</span>
+                <Icon name="note" size={22} className={styles.choiceBtnIcon} />
                 <span className={styles.choiceBtnLabel}>이미 먹었어요</span>
                 <span className={styles.choiceBtnSub}>시간/시간 직접 입력</span>
               </button>
@@ -1800,14 +1803,14 @@ export default function Parenting({ user }: Props) {
                 className={`${styles.sideBtn} ${breastSide === 'left' ? styles.sideBtnActive : ''}`}
                 onClick={() => setBreastSide('left')}
               >
-                <span className={styles.sideBtnIcon}>👈</span>
+                <Icon name="arrow-left" size={20} className={styles.sideBtnIcon} />
                 왼쪽
               </button>
               <button
                 className={`${styles.sideBtn} ${breastSide === 'right' ? styles.sideBtnActive : ''}`}
                 onClick={() => setBreastSide('right')}
               >
-                <span className={styles.sideBtnIcon}>👉</span>
+                <Icon name="arrow-right" size={20} className={styles.sideBtnIcon} />
                 오른쪽
               </button>
             </div>
@@ -1839,11 +1842,11 @@ export default function Parenting({ user }: Props) {
             <button
               className={`${styles.sideBtn} ${pastFeeding.side === 'left' ? styles.sideBtnActive : ''}`}
               onClick={() => setPastFeeding(prev => ({ ...prev, side: 'left' }))}
-            >👈 왼쪽</button>
+            ><Icon name="arrow-left" size={17} /> 왼쪽</button>
             <button
               className={`${styles.sideBtn} ${pastFeeding.side === 'right' ? styles.sideBtnActive : ''}`}
               onClick={() => setPastFeeding(prev => ({ ...prev, side: 'right' }))}
-            >👉 오른쪽</button>
+            ><Icon name="arrow-right" size={17} /> 오른쪽</button>
           </div>
           <div className={styles.amountControl}>
             <button className={styles.amountBtn} onClick={() => setPastFeeding(prev => ({ ...prev, durationMin: Math.max(1, prev.durationMin - 1) }))}>-</button>
@@ -1884,11 +1887,11 @@ export default function Parenting({ user }: Props) {
             <button
               className={`${styles.sideBtn} ${pastFeeding.type === 'formula' ? styles.sideBtnActive : ''}`}
               onClick={() => setPastFeeding(prev => ({ ...prev, type: 'formula' }))}
-            >🍼 분유</button>
+            ><Icon name="bottle" size={17} /> 분유</button>
             <button
               className={`${styles.sideBtn} ${pastFeeding.type === 'breast' ? styles.sideBtnActive : ''}`}
               onClick={() => setPastFeeding(prev => ({ ...prev, type: 'breast' }))}
-            >🤱 모유</button>
+            ><Icon name="breast" size={17} /> 모유</button>
           </div>
 
           {pastFeeding.type === 'formula' ? (
@@ -1906,11 +1909,11 @@ export default function Parenting({ user }: Props) {
                 <button
                   className={`${styles.sideBtn} ${pastFeeding.side === 'left' ? styles.sideBtnActive : ''}`}
                   onClick={() => setPastFeeding(prev => ({ ...prev, side: 'left' }))}
-                >👈 왼쪽</button>
+                ><Icon name="arrow-left" size={17} /> 왼쪽</button>
                 <button
                   className={`${styles.sideBtn} ${pastFeeding.side === 'right' ? styles.sideBtnActive : ''}`}
                   onClick={() => setPastFeeding(prev => ({ ...prev, side: 'right' }))}
-                >👉 오른쪽</button>
+                ><Icon name="arrow-right" size={17} /> 오른쪽</button>
               </div>
               <div className={styles.amountControl}>
                 <button className={styles.amountBtn} onClick={() => setPastFeeding(prev => ({ ...prev, durationMin: Math.max(1, prev.durationMin - 1) }))}>-</button>
@@ -1951,7 +1954,7 @@ export default function Parenting({ user }: Props) {
           </div>
           {!isSleep && unmatchedSleep && (
             <div className={styles.sleepConnectInfo}>
-              😴 {formatTime(unmatchedSleep.startedAt)}에 잠든 기록과 연결됩니다
+              <Icon name="moon" size={15} /> {formatTime(unmatchedSleep.startedAt)}에 잠든 기록과 연결됩니다
             </div>
           )}
           <div className={styles.modalActions}>
@@ -2025,7 +2028,7 @@ export default function Parenting({ user }: Props) {
               <div className={styles.editField}>
                 <div className={styles.editLabel}>종류</div>
                 <div className={styles.editToggleRow}>
-                  {[{ v: 'pee', l: '💧 소변' }, { v: 'poop', l: '💩 대변' }, { v: 'both', l: '🧷 둘 다' }].map(t => (
+                  {[{ v: 'pee', l: '소변' }, { v: 'poop', l: '대변' }, { v: 'both', l: '둘 다' }].map(t => (
                     <button
                       key={t.v}
                       className={`${styles.editToggle} ${editItem.item.type === t.v ? styles.editToggleActive : ''}`}
@@ -2045,7 +2048,7 @@ export default function Parenting({ user }: Props) {
                           className={`${styles.diaperColorBtn} ${editItem.item.color === c.value ? styles.diaperColorBtnActive : ''}`}
                           onClick={() => update({ color: c.value })}
                         >
-                          <span>{c.emoji}</span>
+                          <span className={styles.colorSwatch} style={{ background: c.swatch }} />
                           <span>{c.label}</span>
                         </button>
                       ))}
@@ -2355,7 +2358,7 @@ export default function Parenting({ user }: Props) {
         {/* Record List */}
         {growthRecords.length === 0 ? (
           <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>📏</div>
+            <div className={styles.emptyIcon}><Icon name="ruler" size={32} /></div>
             <div className={styles.emptyText}>아직 성장 기록이 없어요</div>
             <div className={styles.emptySubtext}>소아과 방문 시 키/몸무게를 기록해보세요</div>
           </div>
@@ -2496,7 +2499,7 @@ export default function Parenting({ user }: Props) {
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>성별</label>
             <div className={styles.genderSelector}>
-              {([['F', '여아 👧'], ['M', '남아 👦']] as const).map(([val, label]) => (
+              {([['F', '여아'], ['M', '남아']] as const).map(([val, label]) => (
                 <button
                   key={val}
                   type="button"
@@ -2559,7 +2562,7 @@ export default function Parenting({ user }: Props) {
               }}
             >
               {baby.name}
-              {selectedBabyId === baby.id && <span className={styles.babyChipEdit}>✎</span>}
+              {selectedBabyId === baby.id && <span className={styles.babyChipEdit} aria-label="이름 수정"><Icon name="edit" size={12} /></span>}
             </button>
           </div>
         ))}
@@ -2575,7 +2578,7 @@ export default function Parenting({ user }: Props) {
               className={`${styles.subTab} ${activeTab === value ? styles.subTabActive : ''}`}
               onClick={() => setActiveTab(value)}
             >
-              <span className={styles.subTabIcon}>{icon}</span>
+              <Icon name={icon} size={17} className={styles.subTabIcon} />
               <span className={styles.subTabLabel}>{label}</span>
             </button>
           ))}

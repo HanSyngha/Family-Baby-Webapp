@@ -409,15 +409,7 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
         {/* 개인 공간 안내 */}
         {isPrivate && (
           <div className={styles.privateHint}>
-            📥 여기에 올린 뒤, 선택해서 <b>땅땅&콩콩 · 여행 · 땅콩땅콩</b>에 공유하세요!
-          </div>
-        )}
-
-        {/* 앱 설치 배너 */}
-        {installPrompt && (
-          <div className={styles.banner}>
-            <span>땅콩패밀리 앱을 설치해보세요</span>
-            <button className={styles.bannerBtn} onClick={() => { installPrompt.prompt(); installPrompt.userChoice.then(() => setInstallPrompt(null)); }}>설치</button>
+            여기에 올린 뒤, 선택해서 <b>땅땅&콩콩 · 여행 · 땅콩땅콩</b>에 공유하세요
           </div>
         )}
 
@@ -564,7 +556,7 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
             selectedIds={selectedIds}
             onSelectDay={selectDay}
             onLongPress={enterSelectMode}
-            onLikeToggle={handleLikeToggle}
+           
             isAdmin={user.role === 'master'}
             babyBirth={isPrivate ? null : babyBirth}
             enableEvents={scope === 'shared'}

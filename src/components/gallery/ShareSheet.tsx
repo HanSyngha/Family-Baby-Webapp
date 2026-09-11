@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, type Album } from '../../api';
 import styles from './ShareSheet.module.css';
+import Icon, { type IconName } from '../ui/Icon';
 
 interface Props {
   mediaIds: number[];
@@ -99,7 +100,7 @@ export default function ShareSheet({ mediaIds, onClose, onDone }: Props) {
 
           {/* 여행 */}
           <label className={`${styles.row} ${tripOn ? styles.rowOn : ''}`}>
-            <span className={styles.rowIcon}>✈️</span>
+            <Icon name="plane" size={18} className={styles.rowIcon} />
             <span className={styles.rowBody}>
               <span className={styles.rowLabel}>여행</span>
               <span className={styles.rowSub}>특정 여행 앨범에 추가</span>
@@ -129,7 +130,7 @@ export default function ShareSheet({ mediaIds, onClose, onDone }: Props) {
               )}
               <label className={styles.autoPlace}>
                 <input type="checkbox" checked={autoPlace} onChange={e => setAutoPlace(e.target.checked)} />
-                <span>📍 GPS로 장소 자동 분류</span>
+                <span><Icon name="pin" size={14} /> GPS로 장소 자동 분류</span>
               </label>
             </div>
           )}

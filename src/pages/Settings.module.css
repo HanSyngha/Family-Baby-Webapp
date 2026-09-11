@@ -86,7 +86,7 @@
 }
 
 .addBtn:hover {
-  background: rgba(0, 122, 255, 0.14);
+  background: rgba(162, 75, 32, 0.14);
 }
 
 .addBtn:active {
@@ -183,8 +183,8 @@
 
 .configCardActive {
   border-color: var(--color-primary);
-  background: rgba(0, 122, 255, 0.03);
-  box-shadow: 0 0 0 1px var(--color-primary), 0 2px 12px rgba(0, 122, 255, 0.08);
+  background: rgba(162, 75, 32, 0.03);
+  box-shadow: 0 0 0 1px var(--color-primary), 0 2px 12px rgba(162, 75, 32, 0.08);
 }
 
 .configTop {
@@ -309,7 +309,7 @@
 }
 
 .testBtn:hover {
-  background: rgba(0, 122, 255, 0.14);
+  background: rgba(162, 75, 32, 0.14);
 }
 
 .activateBtn {
@@ -375,7 +375,7 @@
 .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(0, 122, 255, 0.2);
+  border: 2px solid rgba(162, 75, 32, 0.2);
   border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -588,7 +588,7 @@
 
 .fieldInput:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(162, 75, 32, 0.1);
 }
 
 .fieldInput::placeholder {
@@ -641,7 +641,7 @@
 }
 
 .fetchModelsBtn:hover {
-  background: rgba(0, 122, 255, 0.14);
+  background: rgba(162, 75, 32, 0.14);
 }
 
 .fetchModelsBtn:active {
@@ -678,7 +678,7 @@
   border-radius: 50%;
   background: var(--color-primary);
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 122, 255, 0.3);
+  box-shadow: 0 1px 4px rgba(162, 75, 32, 0.3);
   transition: transform var(--transition);
 }
 
@@ -693,7 +693,7 @@
   background: var(--color-primary);
   cursor: pointer;
   border: none;
-  box-shadow: 0 1px 4px rgba(0, 122, 255, 0.3);
+  box-shadow: 0 1px 4px rgba(162, 75, 32, 0.3);
 }
 
 .sliderValue {
@@ -725,7 +725,7 @@
 
 .fieldTextarea:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(162, 75, 32, 0.1);
 }
 
 .fieldTextarea::placeholder {

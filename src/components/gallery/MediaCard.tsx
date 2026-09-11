@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import type { MediaItem } from '../../api';
 import { api } from '../../api';
 import styles from './MediaCard.module.css';
+import Icon, { type IconName } from '../ui/Icon';
 
 interface Props {
   item: MediaItem;
@@ -10,7 +11,6 @@ interface Props {
   selectMode?: boolean;
   selected?: boolean;
   onLongPress?: () => void;
-  onLikeToggle?: (id: number, liked: boolean) => void;
   sizes?: string;          // srcset용 — 그리드가 실제 열 수를 알려준다
   markShared?: boolean;   // 개인탭에서 이미 공유된 사진에 "공유됨" 배지
 }
@@ -22,20 +22,8 @@ function formatDuration(sec: number | null): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-function formatDateTime(dateStr: string): string {
-  const d = new Date(dateStr.replace(' ', 'T'));
-  if (isNaN(d.getTime())) return '';
-  const yy = String(d.getFullYear()).slice(2);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mi = String(d.getMinutes()).padStart(2, '0');
-  return `${yy}.${mm}.${dd} ${hh}:${mi}`;
-}
-
-export default function MediaCard({ item, index = 0, onClick, selectMode, selected, onLongPress, onLikeToggle, markShared , sizes }: Props) {
+export default function MediaCard({ item, index = 0, onClick, selectMode, selected, onLongPress, markShared, sizes }: Props) {
   const [loaded, setLoaded] = useState(false);
-  const [pop, setPop] = useState(false);   // 좋아요 누른 순간 하트 팝
   const imgRef = useRef<HTMLImageElement>(null);
   // 썸네일 src를 바로 세팅하고 브라우저 네이티브 loading="lazy"에 지연로딩을 맡긴다.
   // (예전 IntersectionObserver 방식은 초기 마운트에서 안 깨어나 '첫 스크롤 전까지 안 뜨는' 문제 발생)
@@ -74,15 +62,6 @@ export default function MediaCard({ item, index = 0, onClick, selectMode, select
     onClick();
   }, [onClick]);
 
-  const handleLike = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!onLikeToggle) return;
-    setPop(true);
-    window.setTimeout(() => setPop(false), 420);
-    const result = await api.toggleLike(item.id);
-    onLikeToggle(item.id, result.liked);
-  }, [item.id, onLikeToggle]);
-
   return (
     <div
       className={`${styles.card} ${selectMode && selected ? styles.selected : ''}`}
@@ -118,7 +97,7 @@ export default function MediaCard({ item, index = 0, onClick, selectMode, select
         )}
 
         {!selectMode && item.uploadedAt && Date.now() - new Date(item.uploadedAt.replace(' ', 'T')).getTime() < 12 * 3600000 && (
-          <span className={styles.newBadge}>NEW!</span>
+          <span className={styles.newDot} aria-label="새 사진" />
         )}
 
         {/* 즐겨찾기 아이콘 */}
@@ -133,9 +112,9 @@ export default function MediaCard({ item, index = 0, onClick, selectMode, select
         {/* 개인탭: 어느 공간에 공유됐는지 아이콘 (🏠 땅땅&콩콩 / ✈️ 여행 / 👵 땅콩땅콩) */}
         {!selectMode && markShared && (item.visibility === 'shared' || item.inTrip || item.inPeanut) && (
           <div className={styles.shareIcons}>
-            {item.visibility === 'shared' && <span title="땅땅&콩콩">🏠</span>}
-            {item.inTrip && <span title="여행">✈️</span>}
-            {item.inPeanut && <span title="땅콩땅콩">👵</span>}
+            {item.visibility === 'shared' && <span title="땅땅&콩콩"><Icon name="home" size={12} /></span>}
+            {item.inTrip && <span title="여행"><Icon name="plane" size={12} /></span>}
+            {item.inPeanut && <span title="땅콩땅콩"><Icon name="users" size={12} /></span>}
           </div>
         )}
 
@@ -153,34 +132,22 @@ export default function MediaCard({ item, index = 0, onClick, selectMode, select
         )}
       </div>
 
-      <div className={styles.info}>
-        <div className={styles.dateTime}>{formatDateTime(item.createdAt)}</div>
-        <div className={styles.stats}>
-          <button className={`${styles.likeCount} ${item.liked ? styles.active : ''} ${pop ? styles.pop : ''}`} onClick={handleLike}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill={item.liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-            </svg>
-            {item.likeCount > 0 && <span>{item.likeCount}</span>}
-          </button>
-          {item.commentCount > 0 && (
-            <div className={styles.commentCount}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-              <span>{item.commentCount}</span>
-            </div>
+      {!selectMode && (item.likeCount > 0 || item.commentCount > 0) && (
+        <div className={styles.countOverlay}>
+          {item.likeCount > 0 && (
+            <span className={item.liked ? styles.countLiked : undefined}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" /></svg>
+              {item.likeCount}
+            </span>
           )}
-          {item.viewCount > 0 && (
-            <div className={styles.viewCount}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-              <span>{item.viewCount}</span>
-            </div>
+          {item.commentCount > 0 && (
+            <span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+              {item.commentCount}
+            </span>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

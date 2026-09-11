@@ -360,7 +360,7 @@
 }
 
 .dueBadgeSoon {
-  background: rgba(0, 122, 255, 0.08);
+  background: rgba(162, 75, 32, 0.08);
   color: var(--color-primary);
 }
 
@@ -555,7 +555,7 @@
   font-size: 14px;
   font-weight: 600;
   transition: all var(--transition);
-  box-shadow: 0 4px 14px rgba(0, 122, 255, 0.25);
+  box-shadow: 0 4px 14px rgba(162, 75, 32, 0.25);
 }
 
 .emptyBtn:hover { opacity: 0.9; transform: translateY(-1px); }
@@ -577,7 +577,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(0, 122, 255, 0.35);
+  box-shadow: 0 4px 20px rgba(162, 75, 32, 0.35);
   z-index: 90;
   transition: transform var(--transition-spring);
 }
@@ -882,7 +882,7 @@
 }
 
 .dateInput:focus {
-  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(162, 75, 32, 0.2);
 }
 
 .dateClearBtn {
@@ -960,7 +960,7 @@
 }
 
 .chipSelected .chipAvatarFallback {
-  background: rgba(0, 122, 255, 0.15);
+  background: rgba(162, 75, 32, 0.15);
   color: var(--color-primary);
 }
 
@@ -1065,7 +1065,7 @@
 
 .completeTextarea:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.1);
+  box-shadow: 0 0 0 2px rgba(162, 75, 32, 0.1);
 }
 
 .completeTextarea::placeholder {
@@ -1151,7 +1151,7 @@
 
 .noteFieldInput:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.1);
+  box-shadow: 0 0 0 2px rgba(162, 75, 32, 0.1);
 }
 
 .noteFieldInput::placeholder {

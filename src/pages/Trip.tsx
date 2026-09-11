@@ -3,6 +3,7 @@ import type { User } from '../api';
 import TripPlans from './TripPlans';
 import TripGallery from './TripGallery';
 import styles from './Trip.module.css';
+import Icon, { type IconName } from '../components/ui/Icon';
 
 interface Props {
   user: User;
@@ -10,9 +11,9 @@ interface Props {
 
 type SubTab = 'plan' | 'album';
 
-const SUB_TABS: { value: SubTab; label: string; icon: string }[] = [
-  { value: 'plan', label: '계획', icon: '🗺️' },
-  { value: 'album', label: '앨범', icon: '📸' },
+const SUB_TABS: { value: SubTab; label: string; icon: IconName }[] = [
+  { value: 'plan', label: '계획', icon: 'map' },
+  { value: 'album', label: '앨범', icon: 'camera' },
 ];
 
 export default function Trip({ user }: Props) {
@@ -38,7 +39,7 @@ export default function Trip({ user }: Props) {
               className={`${styles.subTab} ${activeTab === value ? styles.subTabActive : ''}`}
               onClick={() => setActiveTab(value)}
             >
-              <span className={styles.subTabIcon}>{icon}</span>
+              <Icon name={icon} size={16} className={styles.subTabIcon} />
               {label}
             </button>
           ))}

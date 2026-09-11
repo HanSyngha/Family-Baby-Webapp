@@ -41,7 +41,7 @@
 }
 .subTab:active { transform: scale(0.97); }
 .subTabActive { color: var(--color-text); }
-.lockIcon { font-size: 11px; }
+.lockIcon { display: inline-flex; vertical-align: -2px; }
 .subTabIndicator {
   position: absolute;
   top: 3px;
@@ -317,6 +317,8 @@
   background: var(--color-bg-secondary);
   border-radius: var(--radius);
   margin-bottom: 12px;
+  /* 큰 화면에서 정렬 버튼이 한없이 늘어나지 않게 */
+  max-width: 520px;
 }
 
 .sortBtn {
@@ -387,7 +389,7 @@
 .spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(0, 122, 255, 0.2);
+  border: 2px solid rgba(162, 75, 32, 0.2);
   border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -462,7 +464,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(0, 122, 255, 0.35);
+  box-shadow: 0 4px 20px rgba(162, 75, 32, 0.35);
   z-index: 90;
   transition: transform var(--transition-spring);
 }

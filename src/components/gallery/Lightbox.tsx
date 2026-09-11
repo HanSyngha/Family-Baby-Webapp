@@ -9,6 +9,7 @@ import Counter from 'yet-another-react-lightbox/plugins/counter';
 import 'yet-another-react-lightbox/styles.css';
 import Comments from './Comments';
 import styles from './Lightbox.module.css';
+import Icon, { type IconName } from '../ui/Icon';
 
 interface Props {
   items: MediaItem[];
@@ -323,7 +324,7 @@ export default function Lightbox({ items, index, user, onClose, onNavigate, onDe
               ) : (
                 <div className={styles.uploadTime}>
                   {item.createdAt.slice(2, 10).replace(/-/g, '.')}
-                  {isPrivate && localPlace && <span className={styles.placeInline}> · 📍 {localPlace}</span>}
+                  {isPrivate && localPlace && <span className={styles.placeInline}> · <Icon name="pin" size={12} /> {localPlace}</span>}
                   {canEdit && (
                     <button onClick={handleDateEdit} className={styles.dateEditBtn} aria-label="시간·장소 편집">
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
@@ -381,7 +382,7 @@ export default function Lightbox({ items, index, user, onClose, onNavigate, onDe
           <div className={styles.peopleSection}>
             {item.viewers.length > 0 && (
               <div className={styles.peopleRow}>
-                <span className={styles.peopleIcon}>👁</span>
+                <Icon name="eye" size={14} className={styles.peopleIcon} />
                 <span className={styles.peopleNames}>{item.viewers.map(v => v.name).join(', ')}</span>
               </div>
             )}
@@ -393,7 +394,7 @@ export default function Lightbox({ items, index, user, onClose, onNavigate, onDe
             )}
             {item.shareCount > 0 && (
               <div className={styles.peopleRow}>
-                <span className={styles.peopleIcon}>📤</span>
+                <Icon name="download" size={14} className={styles.peopleIcon} />
                 <span className={styles.peopleNames}>공유 {item.shareCount}회</span>
               </div>
             )}

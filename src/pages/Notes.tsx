@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { api, type User, type NoteTopic, type Note } from '../api';
 import styles from './Notes.module.css';
+import Icon, { type IconName } from '../components/ui/Icon';
 
 interface Props {
   user: User;
@@ -470,7 +471,7 @@ export default function Notes({ user, embedded }: Props) {
     if (topics.length === 0) {
       return (
         <div className={styles.emptyState}>
-          <div className={styles.emptyStateIcon}>📂</div>
+          <div className={styles.emptyStateIcon}><Icon name="folder" size={30} /></div>
           <div className={styles.emptyStateTitle}>아직 주제가 없어요</div>
           <div className={styles.emptyStateDesc}>주제를 만들어 노트를 정리하세요</div>
           <button className={styles.emptyStateBtn} onClick={openTopicCreate}>
@@ -577,7 +578,7 @@ export default function Notes({ user, embedded }: Props) {
     if (notes.length === 0) {
       return (
         <div className={styles.emptyState}>
-          <div className={styles.emptyStateIcon}>📝</div>
+          <div className={styles.emptyStateIcon}><Icon name="note" size={30} /></div>
           <div className={styles.emptyStateTitle}>아직 노트가 없어요</div>
           <div className={styles.emptyStateDesc}>첫 번째 노트를 작성해보세요</div>
           <button className={styles.emptyStateBtn} onClick={createNote}>
@@ -944,7 +945,7 @@ export default function Notes({ user, embedded }: Props) {
               </div>
             ) : topics.length === 0 ? (
               <div className={styles.emptyState} style={{ padding: '24px 16px' }}>
-                <div className={styles.emptyStateIcon} style={{ fontSize: 36 }}>📂</div>
+                <div className={styles.emptyStateIcon}><Icon name="folder" size={26} /></div>
                 <div className={styles.emptyStateDesc} style={{ fontSize: 13 }}>주제를 만들어 시작하세요</div>
                 <button className={`${styles.emptyStateBtn}`} style={{ fontSize: 12, padding: '8px 16px' }} onClick={openTopicCreate}>
                   <IconPlus size={14} />

@@ -4,41 +4,43 @@
 
 :root {
   /* Colors — 따뜻한 오프화이트 베이스 + iOS 블루 + 땅콩 웜 액센트 */
-  --color-bg: #F4F3F1;
-  --color-bg-secondary: #ECEBE7;
+  /* 사진이 색을 담당한다 — 크롬은 따뜻한 무채색으로 물러나고,
+     액센트(볶은 땅콩)는 활성 탭·주요 CTA·아이 일수에만 쓴다. */
+  --color-bg: #F7F3EC;
+  --color-bg-secondary: #EFE9DE;
   --color-surface: #FFFFFF;
-  --color-surface-hover: #FAFAF8;
-  --color-surface-active: #F1F0EC;
+  --color-surface-hover: #FBF8F3;
+  --color-surface-active: #F2ECE1;
 
-  --color-primary: #007AFF;
-  --color-primary-soft: #3395FF;
-  --color-primary-bg: rgba(0, 122, 255, 0.08);
-  --color-primary-glow: rgba(0, 122, 255, 0.15);
+  --color-primary: #A24B20;
+  --color-primary-soft: #C2653A;
+  --color-primary-bg: rgba(162, 75, 32, 0.09);
+  --color-primary-glow: rgba(162, 75, 32, 0.16);
 
-  /* 땅콩 웜 액센트 (하이라이트/강조용) */
-  --color-accent: #E8943A;
-  --color-accent-soft: #F2B872;
-  --color-accent-bg: rgba(232, 148, 58, 0.10);
+  /* 꿀빛 하이라이트 (아이 일수 등 강조 한 곳) */
+  --color-accent: #C98A2B;
+  --color-accent-soft: #E0AC5C;
+  --color-accent-bg: rgba(201, 138, 43, 0.11);
 
-  --color-text: #1C1A17;
-  --color-text-secondary: #7C7873;
-  --color-text-tertiary: #A8A49E;
+  --color-text: #23190F;
+  --color-text-secondary: #6B5D4E;
+  --color-text-tertiary: #9C8F80;
 
-  --color-border: #DEDCD7;
-  --color-border-light: #EAE8E3;
+  --color-border: #E0D7C7;
+  --color-border-light: #EFE8DC;
 
   --color-success: #34C759;
   --color-warning: #FF9F0A;
   --color-danger: #FF3B30;
   --color-like: #FF3B30;
-  --color-info: #5AC8FA;
+  --color-info: #2F6FD0;
 
   --color-kakao: #FEE500;
   --color-naver: #03C75A;
 
   --color-priority-urgent: #FF3B30;
   --color-priority-high: #FF9F0A;
-  --color-priority-medium: #007AFF;
+  --color-priority-medium: #2F6FD0;
   --color-priority-low: #86868B;
 
   /* Typography — Pretendard 우선 (프리미엄 한글), 시스템 폴백 */
@@ -118,8 +120,8 @@ body {
   color: var(--color-text);
   background: var(--color-bg);
   background-image:
-    radial-gradient(1100px 760px at 100% -8%, rgba(232, 148, 58, 0.055), transparent 58%),
-    radial-gradient(900px 680px at -8% 108%, rgba(0, 122, 255, 0.045), transparent 55%);
+    radial-gradient(1100px 760px at 100% -8%, rgba(201, 138, 43, 0.06), transparent 58%),
+    radial-gradient(900px 680px at -8% 108%, rgba(162, 75, 32, 0.04), transparent 55%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

@@ -199,7 +199,7 @@
   border: none;
   border-radius: 50%;
   background: var(--color-primary);
-  box-shadow: 0 6px 18px rgba(0, 122, 255, 0.35);
+  box-shadow: 0 6px 18px rgba(162, 75, 32, 0.35);
   cursor: pointer;
 }
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api, type User } from '../api';
 import GalleryView from './GalleryView';
 import styles from './Gallery.module.css';
+import Icon, { type IconName } from '../components/ui/Icon';
 
 interface Props {
   user: User;
@@ -38,7 +39,7 @@ export default function Gallery({ user }: Props) {
               className={`${styles.subTab} ${tab === t.value ? styles.subTabActive : ''}`}
               onClick={() => setTab(t.value)}
             >
-              {t.lock && <span className={styles.lockIcon}>🔒</span>}
+              {t.lock && <Icon name="lock" size={13} className={styles.lockIcon} />}
               {t.label}
             </button>
           ))}

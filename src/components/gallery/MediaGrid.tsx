@@ -3,6 +3,7 @@ import { api, type MediaItem, type GalleryEvent } from '../../api';
 import MediaCard from './MediaCard';
 import EventModal from './EventModal';
 import styles from './MediaGrid.module.css';
+import Icon, { type IconName } from '../ui/Icon';
 
 interface Props {
   items: MediaItem[];
@@ -15,7 +16,6 @@ interface Props {
   selectedIds?: Set<number>;
   onSelectDay?: (ids: number[], select: boolean) => void;
   onLongPress?: (firstId: number) => void;
-  onLikeToggle?: (id: number, liked: boolean) => void;
   isAdmin?: boolean;
   babyBirth?: string | null;
   enableEvents?: boolean;
@@ -45,7 +45,7 @@ interface DateGroup {
   items: { item: MediaItem; globalIndex: number }[];
 }
 
-export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sort, columns, selectMode, selectedIds, onSelectDay, onLongPress, onLikeToggle, isAdmin, babyBirth, enableEvents, sectionPrefix = 'month-', markShared }: Props) {
+export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sort, columns, selectMode, selectedIds, onSelectDay, onLongPress, isAdmin, babyBirth, enableEvents, sectionPrefix = 'month-', markShared }: Props) {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   // 갤러리 이벤트 자막
@@ -123,7 +123,6 @@ export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sor
       selectMode={selectMode}
       selected={selectedIds?.has(item.id)}
       onLongPress={onLongPress ? () => onLongPress(item.id) : undefined}
-      onLikeToggle={onLikeToggle}
       sizes={cellSizes}
       markShared={markShared}
     />
@@ -158,7 +157,7 @@ export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sor
               <span className={styles.dateLine} />
               <span className={styles.dateLabel}>{group.label}</span>
               <span className={styles.dateCount}>{group.items.length}장</span>
-              {(() => { const d = daysSinceBirth(group.dateKey, babyBirth); return d ? <span className={styles.seolBadge}>👶 {d}일</span> : null; })()}
+              {(() => { const d = daysSinceBirth(group.dateKey, babyBirth); return d ? <span className={styles.seolBadge}><Icon name="baby" size={13} /> {d}일</span> : null; })()}
               {selectMode && (() => {
                 const ids = group.items.map(({ item }) => item.id);
                 const anySel = ids.some(id => selectedIds?.has(id));

@@ -12,7 +12,10 @@
   font-size: 14px;
 }
 .empty p { font-size: 16px; font-weight: 600; color: var(--color-text-secondary, #636366); margin: 12px 0 4px; }
-.emptyIllust { font-size: 44px; }
+.emptyIllust { font-size: 44px;   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 .emptyHint { font-size: 13px; }
 
 /* 새 여행 만들기 */
@@ -79,7 +82,10 @@
   justify-content: center;
 }
 .coverImg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.coverEmpty { font-size: 48px; opacity: 0.5; }
+.coverEmpty { font-size: 48px; opacity: 0.5;   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .coverOverlay {
   position: absolute;

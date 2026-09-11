@@ -6,6 +6,7 @@ import Lightbox from '../components/gallery/Lightbox';
 import UploadModal from '../components/gallery/UploadModal';
 import { useUploadQueue } from '../hooks/useUploadQueue';
 import styles from './TripGallery.module.css';
+import Icon, { type IconName } from '../components/ui/Icon';
 
 interface Props {
   user: User;
@@ -36,7 +37,7 @@ export default function TripGallery({ user }: Props) {
         <div className={styles.loading}>불러오는 중...</div>
       ) : trips.length === 0 ? (
         <div className={styles.empty}>
-          <div className={styles.emptyIllust}>✈️</div>
+          <div className={styles.emptyIllust}><Icon name="plane" size={34} /></div>
           <p>아직 여행이 없어요</p>
           <span className={styles.emptyHint}>{isMaster ? '위에서 새 여행을 만들어보세요' : '여행이 추가되면 여기에 표시돼요'}</span>
         </div>
@@ -48,7 +49,7 @@ export default function TripGallery({ user }: Props) {
                 {t.coverId ? (
                   <img src={api.thumbUrl(t.coverId)} alt="" className={styles.coverImg} loading="lazy" />
                 ) : (
-                  <span className={styles.coverEmpty}>✈️</span>
+                  <span className={styles.coverEmpty}><Icon name="plane" size={22} /></span>
                 )}
                 <div className={styles.coverOverlay}>
                   <span className={styles.cardTitle}>{t.title}</span>
@@ -214,7 +215,7 @@ function TripDetail({ tripId, user, onBack, onDeleted }: { tripId: number; user:
               style={{ fontSize: 18, fontWeight: 700, border: 'none', borderBottom: '2px solid var(--color-primary)', background: 'transparent', color: 'var(--color-text)', width: '100%', outline: 'none', padding: '2px 0', fontFamily: 'inherit' }} />
           ) : (
             <h2 className={styles.detailTitle} onClick={isMaster ? () => { setEditTitle(true); setTitleVal(album?.title ?? ''); } : undefined} style={isMaster ? { cursor: 'pointer' } : undefined}>
-              {album?.title ?? '여행'}{isMaster && <span style={{ fontSize: 13, opacity: 0.4, marginLeft: 6 }}>✏️</span>}
+              {album?.title ?? '여행'}
             </h2>
           )}
           {album && <span className={styles.detailMeta}>{formatPeriod(album)} · {ordered.length}장</span>}
@@ -242,7 +243,7 @@ function TripDetail({ tripId, user, onBack, onDeleted }: { tripId: number; user:
           {railChips.map(c => (
             <button key={c.key} className={styles.railChip} onClick={() => scrollTo(c.key)}>
               {c.time && <span className={styles.railTime}>{c.time}</span>}
-              <span className={styles.railName}>📍 {c.label}</span>
+              <span className={styles.railName}><Icon name="pin" size={13} /> {c.label}</span>
             </button>
           ))}
         </div>
@@ -273,7 +274,7 @@ function TripDetail({ tripId, user, onBack, onDeleted }: { tripId: number; user:
                     onBlur={() => saveRename(p.id)} maxLength={40} />
                 ) : (
                   <button className={styles.placeName} onClick={isMaster ? () => { setEditPlaceId(p.id); setRenameVal(p.name); } : undefined}>
-                    📍 {p.name}
+                    <Icon name="pin" size={14} /> {p.name}
                   </button>
                 )}
                 <span className={styles.placeMeta}>
@@ -281,18 +282,18 @@ function TripDetail({ tripId, user, onBack, onDeleted }: { tripId: number; user:
                 </span>
                 {isMaster && editPlaceId !== p.id && <button className={styles.placeDel} onClick={() => removePlace(p.id)} aria-label="장소 삭제">✕</button>}
               </div>
-              <MediaGrid items={p.items!} onItemClick={(i) => openById(p.items![i].id)} onLoadMore={() => {}} hasMore={false} sort="flat" columns={columns} onLikeToggle={handleLikeToggle} isAdmin={isMaster} onLongPress={isMaster ? setCover : undefined} />
+              <MediaGrid items={p.items!} onItemClick={(i) => openById(p.items![i].id)} onLoadMore={() => {}} hasMore={false} sort="flat" columns={columns} isAdmin={isMaster} onLongPress={isMaster ? setCover : undefined} />
             </section>
           ))}
           {unplaced.length > 0 && (
             <section id="trip-sec-etc" className={styles.placeSection}>
               {placed.length > 0 && (
                 <div className={styles.placeHeader}>
-                  <span className={styles.placeName}>🗂 기타</span>
+                  <span className={styles.placeName}><Icon name="folder" size={14} /> 기타</span>
                   <span className={styles.placeMeta}>{unplaced.length}장</span>
                 </div>
               )}
-              <MediaGrid items={unplaced} onItemClick={(i) => openById(unplaced[i].id)} onLoadMore={() => {}} hasMore={false} sort="flat" columns={columns} onLikeToggle={handleLikeToggle} isAdmin={isMaster} onLongPress={isMaster ? setCover : undefined} />
+              <MediaGrid items={unplaced} onItemClick={(i) => openById(unplaced[i].id)} onLoadMore={() => {}} hasMore={false} sort="flat" columns={columns} isAdmin={isMaster} onLongPress={isMaster ? setCover : undefined} />
             </section>
           )}
         </>

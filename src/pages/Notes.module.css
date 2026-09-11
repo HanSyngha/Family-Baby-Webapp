@@ -301,7 +301,7 @@
 
 .topicCardSelected {
   background: var(--color-primary-bg);
-  border-color: rgba(0, 122, 255, 0.15);
+  border-color: rgba(162, 75, 32, 0.15);
 }
 
 .topicCardSelected:hover {
@@ -322,7 +322,7 @@
 }
 
 .topicCardSelected .topicIcon {
-  background: rgba(0, 122, 255, 0.12);
+  background: rgba(162, 75, 32, 0.12);
 }
 
 .topicInfo {
@@ -402,7 +402,7 @@
 }
 
 .topicCardSelected .topicBadge {
-  background: rgba(0, 122, 255, 0.12);
+  background: rgba(162, 75, 32, 0.12);
   color: var(--color-primary);
 }
 
@@ -446,7 +446,7 @@
 }
 
 .sidebarTopicItemSelected .sidebarTopicIcon {
-  background: rgba(0, 122, 255, 0.12);
+  background: rgba(162, 75, 32, 0.12);
 }
 
 .sidebarTopicName {
@@ -534,7 +534,7 @@
 
 .noteCardSelected {
   background: var(--color-primary-bg);
-  border-color: rgba(0, 122, 255, 0.15);
+  border-color: rgba(162, 75, 32, 0.15);
 }
 
 .noteCardSelected:hover {
@@ -1084,7 +1084,7 @@
 
 .topicInput:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(162, 75, 32, 0.1);
 }
 
 .topicInput::placeholder {
@@ -1143,7 +1143,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(0, 122, 255, 0.35);
+  box-shadow: 0 4px 20px rgba(162, 75, 32, 0.35);
   z-index: 90;
   transition: transform var(--transition-spring);
   border: none;

@@ -126,6 +126,9 @@ export default function AppShell({ user, onLogout }: Props) {
   // 오른쪽 탭으로 가면 새 화면이 오른쪽에서, 왼쪽이면 왼쪽에서 들어온다.
   const prevTabIdx = useRef(-1);
   const [back, setBack] = useState(false);
+  const [installDismissed, setInstallDismissed] = useState(() => {
+    try { return localStorage.getItem('installBannerDismissed') === '1'; } catch { return false; }
+  });
   useEffect(() => {
     const idx = NAV_ITEMS.findIndex(item => location.pathname.startsWith(item.path));
     if (prevTabIdx.current >= 0 && idx >= 0) setBack(idx < prevTabIdx.current);
@@ -228,11 +231,18 @@ export default function AppShell({ user, onLogout }: Props) {
         </div>
       </aside>
 
-      {/* Mobile Install Banner */}
-      {canInstall && (
+      {/* Mobile Install Banner — 화면에서 가장 강한 색을 광고가 차지하지 않도록 조용하게, 닫을 수 있게 */}
+      {canInstall && !installDismissed && (
         <div className={styles.installBanner}>
-          <span>땅콩패밀리 앱을 설치하세요!</span>
-          <button onClick={install}>설치</button>
+          <span>홈 화면에 추가하면 더 빠르게 열려요</span>
+          <button className={styles.installBannerCta} onClick={install}>설치</button>
+          <button
+            className={styles.installBannerClose}
+            onClick={() => { setInstallDismissed(true); try { localStorage.setItem('installBannerDismissed', '1'); } catch { /* 사생활 보호 모드 */ } }}
+            aria-label="닫기"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
         </div>
       )}
 
@@ -387,9 +397,8 @@ function DownloadIcon() {
 function PeanutIcon({ active }: IconProps = {}) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="7.5" r="4.5" {...fillIf(active)} />
-      <circle cx="12" cy="16.5" r="4.5" {...fillIf(active)} />
-      <line x1="8" y1="12" x2="16" y2="12" />
+      <path d="M12 2.8c2.5 0 4.3 1.9 4.3 4.3 0 1.5-.7 2.4-.7 3.6 0 1.4.9 2 1.5 3.3a5.2 5.2 0 1 1-10.2 0c.6-1.3 1.5-1.9 1.5-3.3 0-1.2-.7-2.1-.7-3.6 0-2.4 1.8-4.3 4.3-4.3z" {...fillIf(active)} />
+      <path d="M9.1 10.6h5.8" />
     </svg>
   );
 }

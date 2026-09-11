@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api, type User, type Todo, type TodoComment } from '../api';
 import styles from './Todos.module.css';
+import Icon, { type IconName } from '../components/ui/Icon';
 
 interface Props {
   user: User;
@@ -583,7 +584,7 @@ export default function Todos({ user, embedded }: Props) {
               {editingTodo && (
                 <div className={styles.formSection}>
                   <div className={styles.sectionLabel}>
-                    <span className={styles.sectionLabelIcon}>📊</span>
+                    <Icon name="chart" size={15} className={styles.sectionLabelIcon} />
                     상태
                   </div>
                   <div className={styles.statusPicker}>
@@ -623,7 +624,7 @@ export default function Todos({ user, embedded }: Props) {
               {editingTodo && (
                 <div className={styles.formSection}>
                   <div className={styles.sectionLabel}>
-                    <span className={styles.sectionLabelIcon}>💬</span>
+                    <Icon name="chat" size={15} className={styles.sectionLabelIcon} />
                     댓글 {comments.length > 0 && <span className={styles.commentBadge}>{comments.length}</span>}
                   </div>
                   <div className={styles.commentList}>
@@ -786,7 +787,7 @@ function TodoItem({ todo, status, expanded, removingIds, isSubtask, onCheck, onT
             )}
             {/* Comment count */}
             {todo.commentCount > 0 && (
-              <span className={styles.commentCountBadge}>💬 {todo.commentCount}</span>
+              <span className={styles.commentCountBadge}><Icon name="chat" size={12} /> {todo.commentCount}</span>
             )}
             {/* Assignees */}
             {todo.assignees.length > 0 && (

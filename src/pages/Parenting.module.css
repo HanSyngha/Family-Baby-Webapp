@@ -78,7 +78,7 @@
 .babyChipActive {
   color: white;
   background: var(--color-primary);
-  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(162, 75, 32, 0.3);
 }
 
 .babyChipEdit {
@@ -222,7 +222,7 @@
 }
 
 .subTabIcon {
-  font-size: 15px;
+  flex-shrink: 0;
 }
 
 .subTabLabel {
@@ -243,40 +243,11 @@
   animation: fadeUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.summaryItem {
-  text-align: center;
-  padding: 12px 4px;
-  background: linear-gradient(180deg, #FFFFFF 0%, var(--color-bg-secondary) 100%);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
-}
-
-.summaryGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-.summaryItem {
-  text-align: center;
-}
-
-.summaryValue {
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--color-text);
-  letter-spacing: -0.8px;
-  line-height: 1.15;
-  font-variant-numeric: tabular-nums;
-}
-
-.summaryLabel {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--color-text-tertiary);
-  margin-top: 2px;
+/* 0 / 0ml / 787분 타일 대신 사람이 읽는 한 줄 */
+.summaryLine {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  letter-spacing: -0.2px;
 }
 
 .summaryDivider {
@@ -289,26 +260,52 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  background: var(--color-primary-bg, #007AFF10);
-  border-radius: 10px;
+  padding: 0;
+  background: transparent;
 }
 
 .predictionIcon {
-  font-size: 16px;
   flex-shrink: 0;
+  color: var(--color-text-tertiary);
 }
 
+/* LLM이 쓴 문단을 통째로 보여주지 않는다. 결론 한 줄 + 필요할 때만 근거. */
 .predictionText {
-  font-size: 13px;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  text-align: left;
+  font-size: 13.5px;
   font-weight: 500;
   color: var(--color-text);
   line-height: 1.4;
+  background: none;
+  border: 0;
+  padding: 0;
 }
 
 .predictionTime {
   font-weight: 700;
-  color: var(--color-primary);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.predictionWhy {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-info);
+}
+
+.predictionReason {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border-light);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
 }
 
 .predictionRefresh {
@@ -366,7 +363,8 @@
 }
 
 .actionBtnIcon {
-  font-size: 28px;
+  color: var(--color-primary);
+  
   line-height: 1;
 }
 
@@ -1316,9 +1314,15 @@
 }
 
 .emptyStateIcon {
-  font-size: 48px;
-  opacity: 0.4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
   margin-bottom: 12px;
+  border-radius: 50%;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-tertiary);
 }
 
 .emptyStateText {
@@ -1387,7 +1391,7 @@
   }
 
   .actionBtnIcon {
-    font-size: 24px;
+    
   }
 
   .actionBtnLabel {
@@ -1406,7 +1410,8 @@
   }
 
   .subTabIcon {
-    font-size: 14px;
+    width: 16px;
+    height: 16px;
   }
 
   .subTabLabel {
@@ -1440,14 +1445,7 @@
     font-size: 18px;
   }
 
-  .summaryGrid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
 
-  .summaryValue {
-    font-size: 18px;
-  }
 }
 
 /* Tablet */
@@ -2375,7 +2373,7 @@
 .diaperColorBtnActive {
   color: var(--color-text);
   background: var(--color-surface, #fff);
-  box-shadow: 0 0 0 2px var(--color-primary, #007AFF);
+  box-shadow: 0 0 0 2px var(--color-primary, var(--color-primary));
 }
 
 /* Auto Sleep Toggle */
@@ -2423,7 +2421,7 @@
 }
 
 .toggleOn {
-  background: var(--color-primary, #007AFF);
+  background: var(--color-primary, var(--color-primary));
 }
 
 .toggleKnob {
@@ -2446,8 +2444,8 @@
   display: inline-block;
   font-size: 10px;
   font-weight: 600;
-  color: var(--color-primary, #007AFF);
-  background: rgba(0, 122, 255, 0.1);
+  color: var(--color-primary, var(--color-primary));
+  background: rgba(162, 75, 32, 0.1);
   padding: 1px 6px;
   border-radius: 6px;
   margin-left: 6px;
@@ -2460,4 +2458,14 @@
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+
+/* 대변 색: 이모지 대신 실제 색 점 — 색을 고르는 UI이므로 이게 정확하다 */
+.colorSwatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  flex-shrink: 0;
 }

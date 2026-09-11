@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api, type GalleryEvent } from '../../api';
 
-const COLORS = ['#E8943A', '#007AFF', '#34C759', '#FF3B30', '#AF52DE', '#FF9F0A', '#5AC8FA', '#FF2D55'];
+const COLORS = ['#C98A2B', '#A24B20', '#3E7A50', '#B33B2C', '#7B4FA8', '#D08A1E', '#2F6FD0', '#B8336A'];
 
 interface Props {
   date: string;                 // 롱프레스한 날짜 YYYY-MM-DD

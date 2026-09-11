@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, type Album } from '../../api';
 import styles from './AddToAlbumSheet.module.css';
+import Icon, { type IconName } from '../ui/Icon';
 
 interface Props {
   // promote: 개인 → 공유(한설/여행). add: 이미 공유된 미디어를 여행에 추가.
@@ -76,7 +77,7 @@ export default function AddToAlbumSheet({ mode, mediaIds, onClose, onDone }: Pro
         <div className={styles.list}>
           {mode === 'promote' && (
             <button className={styles.option} onClick={() => commit(null)} disabled={busy}>
-              <span className={styles.optIcon}>🥜</span>
+              <span className={styles.optIcon}><Icon name="peanut" size={18} /></span>
               <span className={styles.optBody}>
                 <span className={styles.optLabel}>땅땅&콩콩 (공유 갤러리)</span>
                 <span className={styles.optSub}>모두에게 공개</span>
@@ -89,7 +90,7 @@ export default function AddToAlbumSheet({ mode, mediaIds, onClose, onDone }: Pro
           ) : (
             albums.map(a => (
               <button key={a.id} className={styles.option} onClick={() => commit(a.id)} disabled={busy}>
-                <span className={styles.optIcon} style={{ background: a.color || '#E8943A' }}>✈️</span>
+                <span className={styles.optIcon} style={{ background: a.color || 'var(--color-accent)' }}><Icon name="plane" size={18} /></span>
                 <span className={styles.optBody}>
                   <span className={styles.optLabel}>{a.title}</span>
                   <span className={styles.optSub}>{fmtPeriod(a)}</span>

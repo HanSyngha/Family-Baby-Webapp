@@ -4,6 +4,7 @@ import type { User, TripPlan, TripPlanOption, TripPlanScenario, TripPlanItem, Tr
 import { isNativeApp } from '../lib/backup';
 import TripMap, { type MapPoint } from '../components/trip/TripMap';
 import styles from './TripPlans.module.css';
+import Icon, { type IconName } from '../components/ui/Icon';
 
 /**
  * 여행 계획(견적).
@@ -15,13 +16,13 @@ interface Props {
   user: User;
 }
 
-const CATEGORIES: { value: TripOptionCategory; label: string; icon: string }[] = [
-  { value: 'flight', label: '항공', icon: '✈️' },
-  { value: 'lodging', label: '숙소', icon: '🏨' },
-  { value: 'transport', label: '교통', icon: '🚗' },
-  { value: 'activity', label: '액티비티', icon: '🎡' },
-  { value: 'food', label: '식사', icon: '🍽️' },
-  { value: 'etc', label: '기타', icon: '🧳' },
+const CATEGORIES: { value: TripOptionCategory; label: string; icon: IconName }[] = [
+  { value: 'flight', label: '항공', icon: 'plane' },
+  { value: 'lodging', label: '숙소', icon: 'bed' },
+  { value: 'transport', label: '교통', icon: 'car' },
+  { value: 'activity', label: '액티비티', icon: 'ticket' },
+  { value: 'food', label: '식사', icon: 'utensils' },
+  { value: 'etc', label: '기타', icon: 'bag' },
 ];
 
 const CAT_LABEL: Record<string, { label: string; icon: string }> = Object.fromEntries(
@@ -108,7 +109,7 @@ export default function TripPlans(_props: Props) {
       {isPlanner && (
         <div className={styles.viewToggle}>
           <button className={!wifeView ? styles.viewToggleActive : ''} onClick={() => setWifeView(false)}>내 뷰</button>
-          <button className={wifeView ? styles.viewToggleActive : ''} onClick={() => setWifeView(true)}>👀 와이프 뷰</button>
+          <button className={wifeView ? styles.viewToggleActive : ''} onClick={() => setWifeView(true)}><Icon name="eye" size={14} /> 와이프 뷰</button>
         </div>
       )}
       {isPlanner && wifeView && (
@@ -121,7 +122,7 @@ export default function TripPlans(_props: Props) {
         <div className={styles.loading}>불러오는 중...</div>
       ) : plans.length === 0 ? (
         <div className={styles.empty}>
-          <div className={styles.emptyIllust}>🗺️</div>
+          <div className={styles.emptyIllust}><Icon name="map" size={32} /></div>
           <p>{wifeView ? '아직 공개한 계획이 없어요' : '아직 여행 계획이 없어요'}</p>
           <span className={styles.emptyHint}>
             {wifeView
@@ -143,8 +144,8 @@ export default function TripPlans(_props: Props) {
                 )}
               </div>
               <div className={styles.cardMeta}>
-                {p.destination && <span>📍 {p.destination}</span>}
-                <span>🗓 {formatPeriod(p.startDate, p.endDate)}</span>
+                {p.destination && <span><Icon name="pin" size={13} /> {p.destination}</span>}
+                <span><Icon name="calendar" size={13} /> {formatPeriod(p.startDate, p.endDate)}</span>
               </div>
               <div className={styles.cardFooter}>
                 <div className={styles.cardTotal}>
@@ -318,7 +319,7 @@ function PlanDetail({ planId, wifeView, onBack }: { planId: number; wifeView?: b
             disabled={busy}
             onClick={() => run(() => api.updateTripPlan(plan.id, { status: plan.status === 'published' ? 'draft' : 'published' }))}
           >
-            {plan.status === 'published' ? '🔓 공개중' : '🔒 나만 보기'}
+            {plan.status === 'published' ? <><Icon name="unlock" size={13} /> 공개중</> : <><Icon name="lock" size={13} /> 나만 보기</>}
           </button>
           <button className={`${styles.plannerBtn} ${pct > 0 ? styles.plannerBtnAccent : ''}`} onClick={() => setShowDiscount(true)}>
             공개가 {pct > 0 ? `−${pct}%` : '설정'}
@@ -331,7 +332,7 @@ function PlanDetail({ planId, wifeView, onBack }: { planId: number; wifeView?: b
 
       {wifeView && (
         <div className={styles.wifeBanner}>
-          👀 <b>황하람님 화면 미리보기</b>
+          <Icon name="eye" size={15} /> <b>황하람님 화면 미리보기</b>
           {data!.previewNotVisibleYet ? ' — 아직 공개 전이라 실제로는 목록에 보이지 않습니다.' : ' — 공개용 금액으로 표시 중입니다.'}
         </div>
       )}

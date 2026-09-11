@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { backup, isNativeApp, type BackupStatus, type FolderInfo, type BackupConfig } from '../../lib/backup';
 import s from './BackupSettings.module.css';
+import Icon, { type IconName } from '../ui/Icon';
 
 function relTime(ms: number): string {
   if (!ms) return '아직 없음';
@@ -122,7 +123,7 @@ export default function BackupSettings() {
 
           {status.enabled && !status.hasMediaPermission && (
             <button className={s.warn} onClick={() => backup.ensurePermissions().then(refresh)}>
-              ⚠️ 사진·영상 접근 권한이 필요합니다. 눌러서 허용하기
+              <Icon name="alert" size={14} /> 사진·영상 접근 권한이 필요합니다. 눌러서 허용하기
             </button>
           )}
 

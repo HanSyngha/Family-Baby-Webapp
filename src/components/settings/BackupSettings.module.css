@@ -193,7 +193,7 @@
 }
 .folderOn {
   border-color: var(--color-primary);
-  background: rgba(0, 122, 255, 0.05);
+  background: rgba(162, 75, 32, 0.05);
 }
 .folderCheck {
   flex: 0 0 22px;
