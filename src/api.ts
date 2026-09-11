@@ -937,7 +937,7 @@ export const api = {
 
   // Media URLs
   // w: 640 | 1280 → 서버가 원본에서 파생본을 만들어 캐시해 돌려준다. 생략하면 기존 300px.
-  thumbUrl: (id: number, v?: string, w?: 640 | 1280) => {
+  thumbUrl: (id: number, v?: string, w?: 640 | 1280 | 2048) => {
     const q = new URLSearchParams();
     if (v) q.set('v', v);
     if (w) q.set('w', String(w));

@@ -1,6 +1,7 @@
 package me.synology.syngha.peanutfamily
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -34,6 +35,48 @@ import org.json.JSONObject
     ]
 )
 class PeanutBackupPlugin : Plugin() {
+
+    /**
+     * WebView 밖으로 나가는 커스텀 스킴 처리.
+     * 카카오 로그인 페이지의 "카카오톡으로 로그인"은 안드로이드에서 `intent://...#Intent;scheme=kakaotalk;package=com.kakao.talk;end`
+     * 로 카카오톡을 깨운다. Capacitor 기본 구현(Bridge.launchIntent)은 이 URI를 그대로 ACTION_VIEW에 넣어
+     * ActivityNotFoundException을 조용히 삼키므로, 앱 안에서는 버튼을 눌러도 아무 일도 안 일어나고
+     * 결국 계정을 직접 입력하게 된다. intent://는 Intent.parseUri로 풀어서 실행하고, 앱이 없으면
+     * browser_fallback_url → 스토어 순으로 대체한다. http/https 등은 null을 돌려 기본 동작에 맡긴다.
+     */
+    override fun shouldOverrideLoad(url: Uri?): Boolean? {
+        val scheme = url?.scheme ?: return null
+        if (scheme == "http" || scheme == "https" || scheme == "data" || scheme == "blob"
+            || scheme == "about" || scheme == "javascript" || scheme == "file") return null
+        val ctx = context
+        try {
+            if (scheme == "intent") {
+                val intent = Intent.parseUri(url.toString(), Intent.URI_INTENT_SCHEME)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                if (intent.resolveActivity(ctx.packageManager) != null) {
+                    ctx.startActivity(intent)
+                    return true
+                }
+                val fallback = intent.getStringExtra("browser_fallback_url")
+                if (!fallback.isNullOrEmpty()) {
+                    bridge.webView.loadUrl(fallback)
+                    return true
+                }
+                val pkg = intent.`package`
+                if (!pkg.isNullOrEmpty()) {
+                    ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
+                return true
+            }
+            // kakaotalk://, kakaolink://, market:// 등 일반 커스텀 스킴
+            ctx.startActivity(Intent(Intent.ACTION_VIEW, url).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: ActivityNotFoundException) {
+            // 대상 앱 없음 — 페이지는 그대로 두고 조용히 무시(웹 로그인으로 진행 가능)
+        } catch (e: Exception) {
+            // URI 파싱 실패 등
+        }
+        return true
+    }
 
     @PluginMethod
     fun getStatus(call: PluginCall) {

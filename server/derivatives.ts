@@ -9,7 +9,7 @@ const FF_OPTS = { maxBuffer: 32 * 1024 * 1024 };
 const DATA_DIR = path.resolve('data');
 const DERIV_DIR = path.join(DATA_DIR, 'derivatives');
 
-export const DERIVATIVE_WIDTHS = [640, 1280] as const;
+export const DERIVATIVE_WIDTHS = [640, 1280, 2048] as const;
 export type DerivativeWidth = (typeof DERIVATIVE_WIDTHS)[number];
 
 export function parseDerivativeWidth(raw: unknown): DerivativeWidth | null {
@@ -19,6 +19,26 @@ export function parseDerivativeWidth(raw: unknown): DerivativeWidth | null {
 
 // 같은 파일을 동시에 여러 번 요청해도 한 번만 생성한다 (갤러리 스크롤 시 다발 요청).
 const inFlight = new Map<string, Promise<string | null>>();
+
+// 갤러리 한 화면이면 파생본 요청이 수십 개가 동시에 들어온다.
+// DS720+(Celeron)에서 4000px JPEG 리사이즈를 40개 동시에 돌리면 서버가 먹통이 되므로
+// 실제 인코딩은 2개씩만 흘려보낸다. 대기는 순서대로, 캐시 적중은 이 게이트를 타지 않는다.
+const MAX_CONCURRENT = 2;
+let running = 0;
+const waiting: (() => void)[] = [];
+
+function acquire(): Promise<void> {
+  if (running < MAX_CONCURRENT) {
+    running++;
+    return Promise.resolve();
+  }
+  return new Promise(resolve => waiting.push(() => { running++; resolve(); }));
+}
+
+function release(): void {
+  running--;
+  waiting.shift()?.();
+}
 
 function derivPath(filename: string, width: number): string {
   return path.join(DERIV_DIR, `${filename}.${width}.webp`);
@@ -52,6 +72,9 @@ export async function ensureDerivative(
     const tmp = `${out}.${process.pid}.tmp`;
     const tmpFrame = `${tmp}.png`;
     const started = Date.now();
+    await acquire();
+    // 대기하는 동안 다른 요청이 이미 만들었을 수 있다
+    if (fs.existsSync(out)) { release(); return out; }
     try {
       if (type === 'video') {
         await execFileAsync('ffmpeg', ['-y', '-i', originalPath, '-vframes', '1', '-vf', `scale=${width}:-2`, tmpFrame], FF_OPTS);
@@ -70,6 +93,7 @@ export async function ensureDerivative(
       console.warn(`[deriv] ${filename} @${width} 실패 → 300px 폴백:`, (err as Error).message);
       return null;
     } finally {
+      release();
       fs.rmSync(tmp, { force: true });
       fs.rmSync(tmpFrame, { force: true });
       inFlight.delete(key);

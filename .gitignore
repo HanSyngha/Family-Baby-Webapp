@@ -20,3 +20,6 @@ android/capacitor-cordova-android-plugins/build/
 # 릴리스 서명키 — 절대 커밋 금지
 android/keystore.properties
 android/*.jks
+
+# Claude Code 워크트리/세션 파일 (배포·커밋 대상 아님)
+.claude/

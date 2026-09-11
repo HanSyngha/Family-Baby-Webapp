@@ -83,29 +83,40 @@ export default function AppShell({ user, onLogout }: Props) {
     const el = contentRef.current;
     if (!el) return;
 
+    // 실제로 스크롤하는 요소는 폭에 따라 다르다.
+    // 데스크톱(≥768px)은 .content가 100dvh로 잘려 main이 스크롤하지만,
+    // 모바일은 .shell이 min-height라 main이 콘텐츠만큼 늘어나고 '문서'가 스크롤한다.
+    const scroller = (): HTMLElement =>
+      el.scrollHeight > el.clientHeight + 4 ? el : (document.scrollingElement as HTMLElement);
+
     const target = scrollMemory.current.get(tabKey) ?? 0;
     let settled = false;
     const apply = () => {
       if (settled) return;
       // 목록이 아직 덜 그려졌으면 원하는 위치까지 못 간다 → 도달할 때까지 재시도
-      el.scrollTop = target;
-      if (target === 0 || Math.abs(el.scrollTop - target) < 2) settled = true;
+      const sc = scroller();
+      sc.scrollTop = target;
+      if (target === 0 || Math.abs(sc.scrollTop - target) < 2) settled = true;
     };
     requestAnimationFrame(apply);
 
-    // 사진이 비동기로 채워지는 동안 높이가 자라므로 최대 2초간 따라간다
+    // 사진이 비동기로 채워지는 동안 높이가 자라므로 최대 2.5초간 따라간다
     const ro = new ResizeObserver(apply);
     if (el.firstElementChild) ro.observe(el.firstElementChild);
-    const stop = window.setTimeout(() => { settled = true; ro.disconnect(); }, 2000);
+    const stop = window.setTimeout(() => { settled = true; ro.disconnect(); }, 2500);
 
     const onScroll = () => {
-      if (settled || target === 0) scrollMemory.current.set(tabKey, el.scrollTop);
+      if (settled) scrollMemory.current.set(tabKey, scroller().scrollTop);
     };
     el.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('scroll', onScroll, { passive: true });
 
     return () => {
-      scrollMemory.current.set(tabKey, el.scrollTop);
+      // 여기서 scrollTop을 읽어 저장하면 안 된다.
+      // cleanup 시점엔 이미 새 화면으로 교체돼 문서가 짧아져 0으로 클램프된 상태라,
+      // scroll 리스너가 저장해 둔 진짜 위치를 0으로 덮어쓴다.
       el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('scroll', onScroll);
       ro.disconnect();
       window.clearTimeout(stop);
     };

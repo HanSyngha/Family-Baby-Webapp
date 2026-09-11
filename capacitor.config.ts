@@ -20,6 +20,11 @@ const config: CapacitorConfig = {
       'syngha.synology.me', 'syngha.synology.me:2280',
     ],
   },
+  android: {
+    // targetSdk 36(Play 필수)부터 Android 15+ 기기에서 엣지투엣지가 강제된다.
+    // WebView가 상태바/내비게이션바 아래로 깔리지 않게 Capacitor가 마진을 넣어 준다.
+    adjustMarginsForEdgeToEdge: 'auto',
+  },
 };
 
 export default config;

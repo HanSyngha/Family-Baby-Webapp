@@ -30,21 +30,13 @@ function toSlides(items: MediaItem[]): Slide[] {
     if (item.type === 'video') {
       return { src: api.thumbUrl(item.id, item.filename, 1280), mediaItem: item } as any;
     }
-    // 원본(수 MB)을 바로 받으면 열자마자 뿌연 채로 한참 멈춰 있다.
-    // 1280 파생본을 먼저 띄우고, 확대(zoom)할 때만 원본까지 올라가게 srcSet으로 계단을 만든다.
-    const w = item.width ?? 1280;
-    const h = item.height ?? 1280;
-    const ratio = h / w;
+    // 원본(3~8MB)을 바로 받으면 열자마자 뿌연 채로 한참 멈춰 있다.
+    // 2048 파생본(≈200KB)이면 고DPI 화면과 확대까지 선명하면서 20배 이상 빨리 뜬다.
+    // width/height는 넘기지 않는다 — DB 값은 EXIF 회전 전 치수라 세로 사진에서 뒤집혀 있고,
+    // 그대로 주면 YARL이 zoom 한계를 잘못 잡는다. 자연 크기를 쓰게 두는 편이 정확하다.
     return {
-      src: api.thumbUrl(item.id, item.filename, 1280),
+      src: api.thumbUrl(item.id, item.filename, 2048),
       alt: item.originalName,
-      width: w,
-      height: h,
-      srcSet: [
-        { src: api.thumbUrl(item.id, item.filename, 640), width: 640, height: Math.round(640 * ratio) },
-        { src: api.thumbUrl(item.id, item.filename, 1280), width: 1280, height: Math.round(1280 * ratio) },
-        { src: api.fileUrl(item.id, item.filename), width: w, height: h },
-      ],
     };
   });
 }

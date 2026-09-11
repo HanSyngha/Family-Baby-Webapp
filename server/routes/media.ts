@@ -440,7 +440,17 @@ export function registerMediaRoutes(app: FastifyInstance) {
     }
 
     const thumbPath = path.join(resolveDataDir(media.source), 'thumbnails', media.filename + '.webp');
-    if (!fs.existsSync(thumbPath)) return reply.code(404).send({ error: 'Thumbnail not found' });
+    if (!fs.existsSync(thumbPath)) {
+      // 썸네일이 애초에 안 만들어진 항목(전체의 0.02% 수준)은 갤러리에 빈 칸으로 남는다.
+      // 원본에서 한 번 만들어 캐시하고 그걸 내려준다.
+      const rescued = await ensureDerivative(resolveDataDir(media.source), media.filename, media.type, 640);
+      if (!rescued) return reply.code(404).send({ error: 'Thumbnail not found' });
+      reply.headers({
+        'Content-Type': 'image/webp',
+        'Cache-Control': 'max-age=31536000, immutable',
+      });
+      return reply.send(fs.createReadStream(rescued));
+    }
 
     reply.headers({
       'Content-Type': 'image/webp',

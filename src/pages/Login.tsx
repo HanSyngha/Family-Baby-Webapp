@@ -4,7 +4,7 @@ const IS_PWA = typeof window !== 'undefined' && window.matchMedia('(display-mode
 
 function handleLogin(e: React.MouseEvent, provider: string) {
   e.preventDefault();
-  document.cookie = `app_mode=${IS_PWA ? 'pwa' : 'browser'}; path=/; max-age=300; SameSite=Lax`;
+  document.cookie = `fapp_mode=${IS_PWA ? 'pwa' : 'browser'}; path=/; max-age=300; SameSite=Lax`;
   window.location.href = `/api/auth/${provider}`;
 }
 

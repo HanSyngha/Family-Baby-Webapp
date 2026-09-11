@@ -4,6 +4,10 @@ import crypto from 'crypto';
 import db from './db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+// 토큰 발급 앱 식별(aud). relatives(peanut-share)와 같은 호스트(포트만 다름)라 쿠키 저장소를
+// 공유하고, 과거엔 시크릿까지 같아서 상대 앱 토큰이 그대로 통과해 '같은 id의 다른 사람'으로
+// 로그인되는 사고가 있었다. 시크릿 분리와 별개로 aud 검증으로 한 번 더 막는다.
+const JWT_AUDIENCE = 'peanut-family';
 const BASE_URL = process.env.BASE_URL || 'http://localhost:2230';
 
 // /api/auth/token 남용 방지: '리프레시 토큰(기기)별' 분당 한도.
@@ -57,7 +61,7 @@ export function authenticate(request: FastifyRequest, reply: FastifyReply, done:
     return;
   }
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+    const payload = jwt.verify(token, JWT_SECRET, { audience: JWT_AUDIENCE }) as JwtPayload;
     const user = db.prepare('SELECT id, name, banned FROM users WHERE id = ?').get(payload.userId) as any;
     if (user?.banned) {
       logAuth('BANNED', request, { userId: payload.userId });
@@ -80,7 +84,7 @@ export function authenticate(request: FastifyRequest, reply: FastifyReply, done:
 }
 
 function generateToken(userId: number, role: string): string {
-  return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: '4h' });
+  return jwt.sign({ userId, role }, JWT_SECRET, { expiresIn: '4h', audience: JWT_AUDIENCE });
 }
 
 // refresh token: 256bit 랜덤. 평문은 클라이언트에만, 서버는 SHA-256 해시만 저장.
@@ -110,8 +114,10 @@ function upsertUser(provider: string, providerId: string, name: string, profileI
   return { id: result.lastInsertRowid as number, role };
 }
 
+// OAuth 콜백에서 쿠키 이름 결정 (fapp_mode 쿠키로 판별). 'app_mode'는 relatives와 이름이 겹쳐
+// 같은 호스트에서 서로 덮어썼으므로 앱별 prefix 사용.
 function getCallbackCookieName(request: FastifyRequest): string {
-  return request.cookies?.app_mode === 'pwa' ? 'fpauth' : 'fauth';
+  return request.cookies?.fapp_mode === 'pwa' ? 'fpauth' : 'fauth';
 }
 
 const COOKIE_OPTS = (secure: boolean) => ({
@@ -224,7 +230,7 @@ export function registerAuthRoutes(app: FastifyInstance) {
         .clearCookie(REFRESH_COOKIE, { path: '/' })
         .setCookie(cookieName, token, ACCESS_COOKIE_OPTS(secure))
         .setCookie(REFRESH_COOKIE, refreshToken, REFRESH_COOKIE_OPTS(secure))
-        .clearCookie('app_mode', { path: '/' })
+        .clearCookie('fapp_mode', { path: '/' })
         .redirect('/');
     } catch (err) {
       request.log.error(err, 'Kakao OAuth failed');

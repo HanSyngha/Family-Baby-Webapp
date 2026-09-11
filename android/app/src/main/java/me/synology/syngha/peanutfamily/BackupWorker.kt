@@ -54,8 +54,14 @@ class BackupWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
         val api = BackupApi(BackupPrefs.baseUrl(ctx), ctx.contentResolver)
         var access = api.refreshAccessToken(refresh)
         if (access == null) {
-            // 토큰 갱신 실패(네트워크/만료). retry()의 백오프 무한루프 대신 종료 — 다음 주기(15분)에 재시도.
-            BackupPrefs.setState(ctx, now(), 0, false, "토큰 갱신 실패(재로그인 필요할 수 있음)")
+            if (api.lastRefreshStatus == 401) {
+                // 서버가 refresh token을 거부(폐기/무효). 지워 두면 다음 앱 실행 때 WebView가 새로 등록한다.
+                BackupPrefs.setRefreshToken(ctx, null)
+                BackupPrefs.setState(ctx, now(), 0, false, "로그인 필요(앱을 한 번 열어주세요)")
+                return@withContext Result.success()
+            }
+            // 토큰 갱신 실패(네트워크 등). retry()의 백오프 무한루프 대신 종료 — 다음 주기(15분)에 재시도.
+            BackupPrefs.setState(ctx, now(), 0, false, "토큰 갱신 실패(네트워크)")
             return@withContext Result.success()
         }
 

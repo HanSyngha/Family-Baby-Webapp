@@ -27,11 +27,17 @@ class BackupApi(private val baseUrl: String, private val resolver: ContentResolv
 
     private val jsonType = "application/json".toMediaType()
 
+    /** 마지막 refreshAccessToken 호출의 HTTP 상태(네트워크 오류면 0). 401이면 refresh token 자체가 폐기된 것. */
+    var lastRefreshStatus = 0
+        private set
+
     /** refresh token → access token. 실패 시 null. */
     fun refreshAccessToken(refreshToken: String): String? {
         val body = JSONObject().put("refreshToken", refreshToken).toString().toRequestBody(jsonType)
         val req = Request.Builder().url("$baseUrl/api/auth/token").post(body).build()
+        lastRefreshStatus = 0
         client.newCall(req).execute().use { res ->
+            lastRefreshStatus = res.code
             if (!res.isSuccessful) return null
             val s = res.body?.string() ?: return null
             val token = JSONObject(s).optString("accessToken")
