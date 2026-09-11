@@ -5,6 +5,7 @@ import { useInstallPrompt } from '../hooks/useInstallPrompt';
 import BackupSettings from '../components/settings/BackupSettings';
 import { isNativeApp } from '../lib/backup';
 import s from './Settings.module.css';
+import Icon, { type IconName } from '../components/ui/Icon';
 
 interface Props {
   user: User;
@@ -401,7 +402,7 @@ export default function Settings({ user, onLogout }: Props) {
           <div className={s.activityList}>
             {adminActivity.map((a, i) => (
               <div key={i} className={s.activityItem}>
-                <span className={s.activityIcon}>{ACTION_ICONS[a.action] || '📋'}</span>
+                <Icon name={ACTION_ICONS[a.action] || 'clipboard'} size={16} className={s.activityIcon} />
                 <div className={s.activityContent}>
                   <div className={s.activityText}>
                     <strong>{a.userName}</strong> {ACTION_LABELS[a.action] || a.action}
@@ -781,9 +782,9 @@ function formatTimeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}일 전`;
 }
 
-const ACTION_ICONS: Record<string, string> = {
-  upload: '\uD83D\uDCF8', comment: '\uD83D\uDCAC', feeding: '\uD83C\uDF7C', sleep: '\uD83D\uDCA4',
-  calendar: '\uD83D\uDCC5', todo: '\u2705', note: '\uD83D\uDCDD',
+const ACTION_ICONS: Record<string, IconName> = {
+  upload: 'camera', comment: 'chat', feeding: 'bottle', sleep: 'moon',
+  calendar: 'calendar', todo: 'check-square', note: 'note',
 };
 const ACTION_LABELS: Record<string, string> = {
   upload: '사진 업로드', comment: '댓글', feeding: '수유 기록', sleep: '수면 기록',
