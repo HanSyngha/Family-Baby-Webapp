@@ -100,10 +100,18 @@ export default function AppShell({ user, onLogout }: Props) {
     };
     requestAnimationFrame(apply);
 
-    // 사진이 비동기로 채워지는 동안 높이가 자라므로 최대 2.5초간 따라간다
+    // 사진이 비동기로 채워지는 동안 높이가 자라므로 잠깐 따라간다
     const ro = new ResizeObserver(apply);
     if (el.firstElementChild) ro.observe(el.firstElementChild);
-    const stop = window.setTimeout(() => { settled = true; ro.disconnect(); }, 2500);
+    const stop = window.setTimeout(() => { settled = true; ro.disconnect(); }, 1200);
+
+    // 사용자가 화면을 건드리는 순간 복원을 포기한다.
+    // 안 그러면 복원 로직이 드래그를 계속 되돌려 "스크롤이 안 된다"로 느껴진다.
+    const giveUp = () => { settled = true; ro.disconnect(); };
+    const opts = { passive: true, once: true } as const;
+    window.addEventListener('touchstart', giveUp, opts);
+    window.addEventListener('wheel', giveUp, opts);
+    window.addEventListener('keydown', giveUp, { once: true });
 
     const onScroll = () => {
       if (settled) scrollMemory.current.set(tabKey, scroller().scrollTop);
@@ -117,6 +125,9 @@ export default function AppShell({ user, onLogout }: Props) {
       // scroll 리스너가 저장해 둔 진짜 위치를 0으로 덮어쓴다.
       el.removeEventListener('scroll', onScroll);
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('touchstart', giveUp);
+      window.removeEventListener('wheel', giveUp);
+      window.removeEventListener('keydown', giveUp);
       ro.disconnect();
       window.clearTimeout(stop);
     };

@@ -200,7 +200,6 @@
   padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom));
   overflow-y: auto;
   overflow-x: hidden;            /* 페이지 전환 시 14px 슬라이드가 가로 스크롤을 만들지 않게 */
-  overscroll-behavior-y: contain; /* 스크롤 체이닝 / 의도치 않은 당겨서 새로고침 차단 */
   -webkit-overflow-scrolling: touch;
 }
 
