@@ -548,6 +548,21 @@ try { db.exec('ALTER TABLE media ADD COLUMN lng REAL'); } catch {}
 try { db.exec('ALTER TABLE media ADD COLUMN livePhotoGroup TEXT'); } catch {}
 try { db.exec('ALTER TABLE media ADD COLUMN place TEXT'); } catch {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_media_vis_owner ON media(visibility, ownerId, createdAt DESC)'); } catch {}
+
+// ============================================================
+// 외부 공개(Peanut World, port 2270) — 공개 범위 사다리의 마지막 칸
+// 개인공간 → 땅땅&콩콩 → 여행 앨범 → 땅콩땅콩 → 외부 공개
+//
+// DEFAULT 0 이라 기존 미디어는 전량 비공개 유지(회귀 0).
+// ⚠️ 불변식: externalShared = 1 이면 반드시 visibility = 'shared'.
+//    Peanut World는 두 조건을 AND로 걸어 읽으므로, 공유가 취소되면 플래그가 남아 있어도
+//    노출되지 않는다. 그래도 unshare에서 플래그까지 함께 내린다(상태를 진실되게 유지).
+// externalSharedAt: 외부 방문자 기준 'NEW!' 판단용. 사진을 언제 찍었는지가 아니라
+//    언제 공개됐는지가 그들에겐 새 사진이다.
+// ============================================================
+try { db.exec('ALTER TABLE media ADD COLUMN externalShared INTEGER DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE media ADD COLUMN externalSharedAt TEXT'); } catch {}
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_media_external ON media(externalShared, createdAt DESC)'); } catch {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_media_takenat ON media(takenAt)'); } catch {}
 
 // 앨범: 한설(공유 전체, 앨범 미사용) / 여행(kind='trip')

@@ -109,12 +109,13 @@ export default function MediaCard({ item, index = 0, onClick, selectMode, select
           </div>
         )}
 
-        {/* 개인탭: 어느 공간에 공유됐는지 아이콘 (🏠 땅땅&콩콩 / ✈️ 여행 / 👵 땅콩땅콩) */}
-        {!selectMode && markShared && (item.visibility === 'shared' || item.inTrip || item.inPeanut) && (
+        {/* 개인탭: 어느 공간에 공유됐는지 아이콘 (집 땅땅&콩콩 / 비행기 여행 / 사람 땅콩땅콩 / 지구 외부공개) */}
+        {!selectMode && markShared && (item.visibility === 'shared' || item.inTrip || item.inPeanut || !!item.externalShared) && (
           <div className={styles.shareIcons}>
             {item.visibility === 'shared' && <span title="땅땅&콩콩"><Icon name="home" size={12} /></span>}
             {item.inTrip && <span title="여행"><Icon name="plane" size={12} /></span>}
             {item.inPeanut && <span title="땅콩땅콩"><Icon name="users" size={12} /></span>}
+            {!!item.externalShared && <span title="Peanut World (외부 공개)"><Icon name="globe" size={12} /></span>}
           </div>
         )}
 

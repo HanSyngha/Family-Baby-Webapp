@@ -12,7 +12,7 @@ export type IconName =
   | 'syringe' | 'ruler' | 'clipboard' | 'chat' | 'baby' | 'cake'
   | 'calendar' | 'check-square' | 'note' | 'camera' | 'lock' | 'plane'
   | 'users' | 'pin' | 'alert' | 'sparkle' | 'eye' | 'map' | 'car'
-  | 'wallet' | 'folder' | 'peanut' | 'home' | 'heart' | 'download' | 'plus'
+  | 'wallet' | 'folder' | 'peanut' | 'home' | 'heart' | 'download' | 'plus' | 'globe'
   | 'arrow-left' | 'arrow-right' | 'chart' | 'bed' | 'ticket' | 'utensils' | 'bag' | 'unlock' | 'edit';
 
 interface Props {
@@ -177,6 +177,13 @@ const PATHS: Record<IconName, ReactElement> = {
     <>
       <path d="M12 2.8c2.5 0 4.3 1.9 4.3 4.3 0 1.5-.7 2.4-.7 3.6 0 1.4.9 2 1.5 3.3a5.2 5.2 0 1 1-10.2 0c.6-1.3 1.5-1.9 1.5-3.3 0-1.2-.7-2.1-.7-3.6 0-2.4 1.8-4.3 4.3-4.3z" />
       <path d="M9.1 10.6h5.8" />
+    </>
+  ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3.2 9.2h17.6M3.2 14.8h17.6" />
+      <path d="M12 3c-2.4 2.5-3.6 5.5-3.6 9s1.2 6.5 3.6 9c2.4-2.5 3.6-5.5 3.6-9S14.4 5.5 12 3z" />
     </>
   ),
   home: (

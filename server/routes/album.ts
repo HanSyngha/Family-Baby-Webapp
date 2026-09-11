@@ -270,6 +270,33 @@ export function registerAlbumRoutes(app: FastifyInstance) {
     return { ok: true, promoted: upd.changes, addedToAlbum: added };
   });
 
+  // 외부 공개(Peanut World) 토글.
+  //
+  // 공개는 '땅땅&콩콩에 이미 올라간 사진'만 가능하다 — 개인공간 사진이 실수로 한 번에
+  // 바깥까지 나가는 경로를 원천 차단한다. (개인 → 외부 공개는 항상 공유를 한 번 거쳐야 함)
+  // 파일은 복사하지 않는다. Peanut World가 이 플래그를 읽어 같은 파일을 서빙한다.
+  app.post('/api/media/external-share', { preHandler: authenticate }, async (request, reply) => {
+    if (!requireMaster(request, reply)) return;
+    const { mediaIds, on } = request.body as { mediaIds: number[]; on: boolean };
+    if (!Array.isArray(mediaIds) || mediaIds.length === 0) return reply.code(400).send({ error: '선택된 미디어 없음' });
+
+    const ph = placeholders(mediaIds.length);
+    if (on) {
+      const res = db.prepare(
+        `UPDATE media SET externalShared = 1, externalSharedAt = datetime('now', '+9 hours')
+         WHERE id IN (${ph}) AND visibility = 'shared' AND externalShared = 0`
+      ).run(...mediaIds);
+
+      // 공유 상태가 아니라 건너뛴 게 있으면 조용히 넘기지 않고 알려준다.
+      const eligible = (db.prepare(`SELECT COUNT(*) c FROM media WHERE id IN (${ph}) AND visibility = 'shared'`).get(...mediaIds) as any).c;
+      const skipped = mediaIds.length - eligible;
+      return { ok: true, changed: res.changes, skipped };
+    }
+
+    const res = db.prepare(`UPDATE media SET externalShared = 0, externalSharedAt = NULL WHERE id IN (${ph})`).run(...mediaIds);
+    return { ok: true, changed: res.changes, skipped: 0 };
+  });
+
   // 공유 취소: 다시 개인공간(비공개)로. 본인이 올린 것만. 땅땅&콩콩/여행/땅콩땅콩에서 모두 내린다.
   app.post('/api/media/unshare', { preHandler: authenticate }, async (request, reply) => {
     if (!requireMaster(request, reply)) return;
@@ -287,8 +314,10 @@ export function registerAlbumRoutes(app: FastifyInstance) {
     const affectedAlbums = (db.prepare(`SELECT DISTINCT albumId FROM album_items WHERE mediaId IN (${oph})`).all(...ownIds) as { albumId: number }[]).map(r => r.albumId);
 
     db.transaction(() => {
-      // 비공개로(소유자=본인 → 불변식 유지) + 여행 앨범에서 제거
-      db.prepare(`UPDATE media SET visibility = 'private', ownerId = ? WHERE id IN (${oph})`).run(userId, ...ownIds);
+      // 비공개로(소유자=본인 → 불변식 유지) + 여행 앨범에서 제거 + 외부 공개 해제
+      // 외부 공개를 같이 내리지 않으면 '공유 취소했는데 밖에는 플래그가 남은' 상태가 된다.
+      // (Peanut World가 visibility도 함께 보므로 노출되진 않지만, 다시 공유하는 순간 되살아난다)
+      db.prepare(`UPDATE media SET visibility = 'private', ownerId = ?, externalShared = 0, externalSharedAt = NULL WHERE id IN (${oph})`).run(userId, ...ownIds);
       db.prepare(`DELETE FROM album_items WHERE mediaId IN (${oph})`).run(...ownIds);
     })();
     for (const aid of affectedAlbums) recomputeAlbum(aid);

@@ -9,7 +9,7 @@ interface Props {
   onDone: (sharedIds: number[]) => void;
 }
 
-// 개인 → 다중선택 공유. 체크박스로 한설/여행/땅콩땅콩 범위 조절.
+// 개인 → 다중선택 공유. 체크박스로 땅땅&콩콩/여행/땅콩땅콩/Peanut World 범위 조절.
 export default function ShareSheet({ mediaIds, onClose, onDone }: Props) {
   const [trips, setTrips] = useState<Album[]>([]);
   const [busy, setBusy] = useState(false);
@@ -18,6 +18,7 @@ export default function ShareSheet({ mediaIds, onClose, onDone }: Props) {
   const [seol, setSeol] = useState(true);
   const [tripOn, setTripOn] = useState(false);
   const [peanutOn, setPeanutOn] = useState(false);
+  const [worldOn, setWorldOn] = useState(false);
 
   const [tripMode, setTripMode] = useState<'existing' | 'new'>('existing');
   const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
@@ -33,12 +34,12 @@ export default function ShareSheet({ mediaIds, onClose, onDone }: Props) {
   }, []);
   useEffect(() => { if (tripOn && tripMode === 'new') newRef.current?.focus(); }, [tripOn, tripMode]);
 
-  // 여행/땅콩땅콩은 공유(한설) 전제 → 한설 자동 체크 & 잠금
-  const seolLocked = tripOn || peanutOn;
+  // 여행/땅콩땅콩/Peanut World는 모두 공유(땅땅&콩콩) 전제 → 자동 체크 & 잠금
+  const seolLocked = tripOn || peanutOn || worldOn;
   const seolChecked = seol || seolLocked;
 
   const tripReady = !tripOn || (tripMode === 'existing' ? !!selectedTripId : !!newTitle.trim());
-  const canConfirm = (seolChecked || tripOn || peanutOn) && tripReady && !busy;
+  const canConfirm = (seolChecked || tripOn || peanutOn || worldOn) && tripReady && !busy;
 
   const confirm = async () => {
     if (!canConfirm) return;
@@ -69,6 +70,11 @@ export default function ShareSheet({ mediaIds, onClose, onDone }: Props) {
       if (peanutOn) {
         try { await api.copyToPeanut(mediaIds); }
         catch (e: any) { setErr('땅콩땅콩 공유는 실패했지만 공유 갤러리에는 추가됐어요: ' + (e.message || '')); }
+      }
+      // Peanut World(외부 공개) — 공유된 뒤라야 서버가 받아준다
+      if (worldOn) {
+        try { await api.externalShare(mediaIds, true); }
+        catch (e: any) { setErr('외부 공개는 실패했지만 공유 갤러리에는 추가됐어요: ' + (e.message || '')); }
       }
       onDone(mediaIds);
     } catch (e: any) {
@@ -143,6 +149,16 @@ export default function ShareSheet({ mediaIds, onClose, onDone }: Props) {
               <span className={styles.rowSub}>외부 공유 갤러리에도 게시</span>
             </span>
             <input type="checkbox" className={styles.check} checked={peanutOn} onChange={e => setPeanutOn(e.target.checked)} />
+          </label>
+
+          {/* Peanut World (외부 공개) */}
+          <label className={`${styles.row} ${worldOn ? styles.rowOn : ''}`}>
+            <Icon name="globe" size={18} className={styles.rowIcon} />
+            <span className={styles.rowBody}>
+              <span className={styles.rowLabel}>Peanut World</span>
+              <span className={styles.rowSub}>승인받은 지인까지 — 가장 넓은 공개</span>
+            </span>
+            <input type="checkbox" className={styles.check} checked={worldOn} onChange={e => setWorldOn(e.target.checked)} />
           </label>
         </div>
 

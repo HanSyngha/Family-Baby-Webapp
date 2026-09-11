@@ -84,6 +84,8 @@ export interface MediaItem {
   ownerId?: number | null;
   inTrip?: boolean;        // 여행 앨범에 들어있나
   inPeanut?: boolean;      // 땅콩땅콩(구앱)에 공유됐나
+  externalShared?: number;         // Peanut World(외부 공개)에 올라갔나 (0/1)
+  externalSharedAt?: string | null;// 외부에 공개된 시각
   lat?: number | null;
   lng?: number | null;
   livePhotoGroup?: string | null;
@@ -698,6 +700,9 @@ export const api = {
   suggestPlaces: (mediaIds: number[]) => request<{ clusters: PlaceSuggestion[]; noGpsMediaIds: number[] }>('/albums/suggest-places', { method: 'POST', body: JSON.stringify({ mediaIds }) }),
   promoteToShared: (mediaIds: number[], albumId?: number | null) => request<{ ok: boolean; promoted: number; addedToAlbum: number }>('/media/promote-to-shared', { method: 'POST', body: JSON.stringify({ mediaIds, albumId }) }),
   unshare: (mediaIds: number[]) => request<{ ok: boolean; unshared: number }>('/media/unshare', { method: 'POST', body: JSON.stringify({ mediaIds }) }),
+  // Peanut World(외부 공개) 토글. 땅땅&콩콩에 이미 올라간 사진만 공개할 수 있다(서버가 강제).
+  externalShare: (mediaIds: number[], on: boolean) =>
+    request<{ ok: boolean; changed: number; skipped: number }>('/media/external-share', { method: 'POST', body: JSON.stringify({ mediaIds, on }) }),
   copyToPeanut: (ids: number[]) =>
     request<{ copied: number; duplicates: number; errors: string[] }>(
       '/media/copy-to-peanut',
