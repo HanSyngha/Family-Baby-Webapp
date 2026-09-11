@@ -212,7 +212,14 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  animation: pageIn var(--dur-base) var(--ease-out) both;
+  /* fill-mode는 반드시 backwards. both를 쓰면 애니메이션이 끝난 뒤에도 transform이
+     '적용된 상태'로 남는다 — 브라우저가 마지막 키프레임의 `transform: none`을
+     항등 행렬(matrix(1,0,0,1,0,0))로 계산하기 때문이다. 그 순간 .page가
+     containing block이 되어 내부의 position:fixed가 전부 뷰포트가 아니라 .page
+     기준으로 잡힌다. 실제로 갤러리 선택 바가 화면 밖(top 3046px)으로 밀려나 보이지
+     않았고, ShareSheet도 열리기는 하되 화면 아래(top 2706px)에 그려졌다.
+     backwards면 진입 애니메이션은 그대로 두고 끝난 뒤 transform이 사라진다. */
+  animation: pageIn var(--dur-base) var(--ease-out) backwards;
 }
 
 .pageBack {
