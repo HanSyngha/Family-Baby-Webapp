@@ -6,6 +6,10 @@
 
 .section {
   margin-bottom: 4px;
+  /* 화면 밖 날짜 섹션은 렌더 비용을 건너뛴다. 사진 수천 장에서 스크롤 프레임 드랍 방지.
+     contain-intrinsic-size: auto → 한 번 그린 뒤엔 실제 높이를 기억해 스크롤 위치가 안 튄다. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 520px;
 }
 
 .dateHeader {
@@ -56,6 +60,23 @@
   border-radius: 999px;
   white-space: nowrap;
 }
+
+/* 날짜별 전체 선택 버튼 (선택 모드 + 그 날짜에 1개 이상 선택됐을 때) */
+.daySelectBtn {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-primary, #E8943A);
+  background: color-mix(in srgb, var(--color-primary, #E8943A) 14%, transparent);
+  border: none;
+  padding: 5px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  cursor: pointer;
+  min-height: 30px;
+  transition: transform 0.12s ease;
+}
+.daySelectBtn:active { transform: scale(0.94); }
 
 .grid {
   display: grid;

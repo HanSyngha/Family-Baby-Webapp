@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import type { MediaItem } from '../../api';
 import { api } from '../../api';
 import styles from './MediaCard.module.css';
@@ -11,6 +11,8 @@ interface Props {
   selected?: boolean;
   onLongPress?: () => void;
   onLikeToggle?: (id: number, liked: boolean) => void;
+  sizes?: string;          // srcset용 — 그리드가 실제 열 수를 알려준다
+  markShared?: boolean;   // 개인탭에서 이미 공유된 사진에 "공유됨" 배지
 }
 
 function formatDuration(sec: number | null): string {
@@ -31,31 +33,22 @@ function formatDateTime(dateStr: string): string {
   return `${yy}.${mm}.${dd} ${hh}:${mi}`;
 }
 
-export default function MediaCard({ item, index = 0, onClick, selectMode, selected, onLongPress, onLikeToggle }: Props) {
+export default function MediaCard({ item, index = 0, onClick, selectMode, selected, onLongPress, onLikeToggle, markShared , sizes }: Props) {
   const [loaded, setLoaded] = useState(false);
+  const [pop, setPop] = useState(false);   // 좋아요 누른 순간 하트 팝
   const imgRef = useRef<HTMLImageElement>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const [src, setSrc] = useState<string | null>(null);
+  // 썸네일 src를 바로 세팅하고 브라우저 네이티브 loading="lazy"에 지연로딩을 맡긴다.
+  // (예전 IntersectionObserver 방식은 초기 마운트에서 안 깨어나 '첫 스크롤 전까지 안 뜨는' 문제 발생)
+  // 300px 단일 썸네일은 DPR 2~3 폰에서 2배 업스케일이라 뿌옇다.
+  // 640/1280 파생본을 srcset으로 같이 주고 브라우저가 화면 밀도에 맞게 고르게 한다.
+  const src = api.thumbUrl(item.id, item.filename);
+  const srcSet = [
+    `${src} 300w`,
+    `${api.thumbUrl(item.id, item.filename, 640)} 640w`,
+    `${api.thumbUrl(item.id, item.filename, 1280)} 1280w`,
+  ].join(', ');
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
-
-  useEffect(() => {
-    const el = imgRef.current;
-    if (!el) return;
-
-    observerRef.current = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setSrc(api.thumbUrl(item.id, item.filename));
-          observerRef.current?.disconnect();
-        }
-      },
-      { rootMargin: '200px' },
-    );
-    observerRef.current.observe(el);
-
-    return () => observerRef.current?.disconnect();
-  }, [item.id]);
 
   const handlePointerDown = useCallback(() => {
     if (!onLongPress || selectMode) return;
@@ -84,6 +77,8 @@ export default function MediaCard({ item, index = 0, onClick, selectMode, select
   const handleLike = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!onLikeToggle) return;
+    setPop(true);
+    window.setTimeout(() => setPop(false), 420);
     const result = await api.toggleLike(item.id);
     onLikeToggle(item.id, result.liked);
   }, [item.id, onLikeToggle]);
@@ -95,12 +90,14 @@ export default function MediaCard({ item, index = 0, onClick, selectMode, select
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      style={{ animationDelay: `${index * 60}ms` }}
+      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
     >
       <div className={styles.imageWrap}>
         <img
           ref={imgRef}
           src={src || undefined}
+          srcSet={srcSet}
+          sizes={sizes ?? '(min-width:1400px) 20vw, (min-width:1024px) 25vw, (min-width:640px) 33vw, 50vw'}
           alt={item.originalName}
           loading="lazy"
           decoding="async"
@@ -133,6 +130,15 @@ export default function MediaCard({ item, index = 0, onClick, selectMode, select
           </div>
         )}
 
+        {/* 개인탭: 어느 공간에 공유됐는지 아이콘 (🏠 땅땅&콩콩 / ✈️ 여행 / 👵 땅콩땅콩) */}
+        {!selectMode && markShared && (item.visibility === 'shared' || item.inTrip || item.inPeanut) && (
+          <div className={styles.shareIcons}>
+            {item.visibility === 'shared' && <span title="땅땅&콩콩">🏠</span>}
+            {item.inTrip && <span title="여행">✈️</span>}
+            {item.inPeanut && <span title="땅콩땅콩">👵</span>}
+          </div>
+        )}
+
         {item.type === 'video' && (
           <>
             <div className={styles.playIcon}>
@@ -150,7 +156,7 @@ export default function MediaCard({ item, index = 0, onClick, selectMode, select
       <div className={styles.info}>
         <div className={styles.dateTime}>{formatDateTime(item.createdAt)}</div>
         <div className={styles.stats}>
-          <button className={`${styles.likeCount} ${item.liked ? styles.active : ''}`} onClick={handleLike}>
+          <button className={`${styles.likeCount} ${item.liked ? styles.active : ''} ${pop ? styles.pop : ''}`} onClick={handleLike}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill={item.liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>

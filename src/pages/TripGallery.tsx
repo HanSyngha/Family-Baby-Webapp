@@ -3,6 +3,8 @@ import { api, type User, type Album, type MediaItem, type TripPlace } from '../a
 import { usePinchColumns } from '../hooks/usePinchColumns';
 import MediaGrid from '../components/gallery/MediaGrid';
 import Lightbox from '../components/gallery/Lightbox';
+import UploadModal from '../components/gallery/UploadModal';
+import { useUploadQueue } from '../hooks/useUploadQueue';
 import styles from './TripGallery.module.css';
 
 interface Props {
@@ -115,6 +117,9 @@ function TripDetail({ tripId, user, onBack, onDeleted }: { tripId: number; user:
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [editPlaceId, setEditPlaceId] = useState<number | null>(null);
   const [renameVal, setRenameVal] = useState('');
+  const [shuffledItems, setShuffledItems] = useState<MediaItem[] | null>(null);
+  const [editTitle, setEditTitle] = useState(false);
+  const [titleVal, setTitleVal] = useState('');
   const { columns } = usePinchColumns();
 
   const load = useCallback(() => {
@@ -123,6 +128,10 @@ function TripDetail({ tripId, user, onBack, onDeleted }: { tripId: number; user:
       .catch(() => {}).finally(() => setLoading(false));
   }, [tripId]);
   useEffect(() => { load(); }, [load]);
+
+  const [showUpload, setShowUpload] = useState(false);
+  // 여행에 바로 업로드(#4): 공유 사진으로 올리며 이 앨범에 추가. 올린 master 개인공간에도 들어감.
+  const uploadQueue = useUploadQueue(load, 'shared', tripId);
 
   // 라이트박스 네비 순서: 장소(레일 순서)별 → 미배정
   const ordered = useMemo(() => [...places.flatMap(p => p.items || []), ...unplaced], [places, unplaced]);
@@ -163,6 +172,26 @@ function TripDetail({ tripId, user, onBack, onDeleted }: { tripId: number; user:
     if (!confirm('이 장소를 삭제할까요? (사진은 여행에 남고 미배정으로 이동합니다)')) return;
     await api.deletePlace(id); load();
   };
+  // 랜덤 슬라이드쇼: 여행 사진 전체를 섞어서 라이트박스 자동재생
+  const startSlideshow = () => {
+    if (ordered.length === 0) return;
+    const arr = ordered.slice();
+    for (let r = 0; r < 3; r++) for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+    setShuffledItems(arr);
+    setLightboxIndex(0);
+    history.pushState({ modal: 'lightbox' }, '');
+  };
+  // 여행 이름 수정
+  const saveTitle = async () => {
+    const t = titleVal.trim();
+    setEditTitle(false);
+    if (t && t !== album?.title) { await api.updateAlbum(tripId, { title: t }); load(); }
+  };
+  // 표지(썸네일) 설정: 사진 길게 누르면
+  const setCover = async (id: number) => {
+    if (!confirm('이 사진을 여행 표지(썸네일)로 설정할까요?')) return;
+    await api.updateAlbum(tripId, { coverMediaId: id }); load();
+  };
 
   const placed = places.filter(p => p.items && p.items.length > 0);
   const railChips = [
@@ -177,9 +206,29 @@ function TripDetail({ tripId, user, onBack, onDeleted }: { tripId: number; user:
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
         <div className={styles.detailTitleWrap}>
-          <h2 className={styles.detailTitle}>{album?.title ?? '여행'}</h2>
+          {editTitle ? (
+            <input autoFocus value={titleVal} maxLength={40}
+              onChange={e => setTitleVal(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') setEditTitle(false); }}
+              onBlur={saveTitle}
+              style={{ fontSize: 18, fontWeight: 700, border: 'none', borderBottom: '2px solid var(--color-primary)', background: 'transparent', color: 'var(--color-text)', width: '100%', outline: 'none', padding: '2px 0', fontFamily: 'inherit' }} />
+          ) : (
+            <h2 className={styles.detailTitle} onClick={isMaster ? () => { setEditTitle(true); setTitleVal(album?.title ?? ''); } : undefined} style={isMaster ? { cursor: 'pointer' } : undefined}>
+              {album?.title ?? '여행'}{isMaster && <span style={{ fontSize: 13, opacity: 0.4, marginLeft: 6 }}>✏️</span>}
+            </h2>
+          )}
           {album && <span className={styles.detailMeta}>{formatPeriod(album)} · {ordered.length}장</span>}
         </div>
+        {ordered.length > 0 && (
+          <button className={styles.delBtn} onClick={startSlideshow} aria-label="랜덤 슬라이드쇼">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polygon points="6 4 20 12 6 20 6 4" /></svg>
+          </button>
+        )}
+        {isMaster && (
+          <button className={styles.delBtn} onClick={() => setShowUpload(true)} aria-label="이 여행에 사진 올리기">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V6M5 12l7-7 7 7" /></svg>
+          </button>
+        )}
         {isMaster && (
           <button className={styles.delBtn} onClick={deleteTrip} aria-label="여행 삭제">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
@@ -204,7 +253,13 @@ function TripDetail({ tripId, user, onBack, onDeleted }: { tripId: number; user:
       ) : ordered.length === 0 ? (
         <div className={styles.empty}>
           <p>이 여행에 사진이 없어요</p>
-          <span className={styles.emptyHint}>땅땅&콩콩이나 개인 갤러리에서 사진을 선택해 이 여행에 추가하세요</span>
+          <span className={styles.emptyHint}>땅땅&콩콩·개인 갤러리에서 골라 추가하거나, 바로 올리세요</span>
+          {isMaster && (
+            <button
+              style={{ marginTop: 14, padding: '11px 20px', border: 'none', borderRadius: 999, background: 'var(--color-primary)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+              onClick={() => setShowUpload(true)}
+            >이 여행에 사진 올리기</button>
+          )}
         </div>
       ) : (
         <>
@@ -226,7 +281,7 @@ function TripDetail({ tripId, user, onBack, onDeleted }: { tripId: number; user:
                 </span>
                 {isMaster && editPlaceId !== p.id && <button className={styles.placeDel} onClick={() => removePlace(p.id)} aria-label="장소 삭제">✕</button>}
               </div>
-              <MediaGrid items={p.items!} onItemClick={(i) => openById(p.items![i].id)} onLoadMore={() => {}} hasMore={false} sort="flat" columns={columns} onLikeToggle={handleLikeToggle} isAdmin={isMaster} />
+              <MediaGrid items={p.items!} onItemClick={(i) => openById(p.items![i].id)} onLoadMore={() => {}} hasMore={false} sort="flat" columns={columns} onLikeToggle={handleLikeToggle} isAdmin={isMaster} onLongPress={isMaster ? setCover : undefined} />
             </section>
           ))}
           {unplaced.length > 0 && (
@@ -237,7 +292,7 @@ function TripDetail({ tripId, user, onBack, onDeleted }: { tripId: number; user:
                   <span className={styles.placeMeta}>{unplaced.length}장</span>
                 </div>
               )}
-              <MediaGrid items={unplaced} onItemClick={(i) => openById(unplaced[i].id)} onLoadMore={() => {}} hasMore={false} sort="flat" columns={columns} onLikeToggle={handleLikeToggle} isAdmin={isMaster} />
+              <MediaGrid items={unplaced} onItemClick={(i) => openById(unplaced[i].id)} onLoadMore={() => {}} hasMore={false} sort="flat" columns={columns} onLikeToggle={handleLikeToggle} isAdmin={isMaster} onLongPress={isMaster ? setCover : undefined} />
             </section>
           )}
         </>
@@ -245,16 +300,27 @@ function TripDetail({ tripId, user, onBack, onDeleted }: { tripId: number; user:
 
       {lightboxIndex !== null && (
         <Lightbox
-          items={ordered}
+          items={shuffledItems ?? ordered}
           index={lightboxIndex}
           user={user}
-          onClose={() => { setLightboxIndex(null); if (history.state?.modal === 'lightbox') history.back(); }}
+          onClose={() => { setLightboxIndex(null); setShuffledItems(null); if (history.state?.modal === 'lightbox') history.back(); }}
           onNavigate={setLightboxIndex}
           onDelete={handleDelete}
           onLikeToggle={handleLikeToggle}
           onFavoriteToggle={handleFavoriteToggle}
           onDateChange={() => {}}
+          initialSlideshow={!!shuffledItems}
         />
+      )}
+
+      {showUpload && <UploadModal uploadQueue={uploadQueue} onClose={() => setShowUpload(false)} />}
+      {!showUpload && uploadQueue.activeCount > 0 && (
+        <div
+          onClick={() => setShowUpload(true)}
+          style={{ position: 'fixed', bottom: 'calc(var(--tab-bar-height, 64px) + env(safe-area-inset-bottom) + 16px)', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, background: 'var(--color-text, #1c1c1e)', color: '#fff', padding: '10px 18px', borderRadius: 999, fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.25)' }}
+        >
+          {uploadQueue.doneCount}/{uploadQueue.totalCount} 업로드 중…
+        </div>
       )}
     </div>
   );

@@ -195,6 +195,97 @@
 
 .bannerBtn:hover { opacity: 0.9; }
 
+.shortsLaunchBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px 12px 14px;
+  margin-bottom: 10px;
+  border: 1px solid color-mix(in srgb, var(--color-primary, #E8943A) 34%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-primary, #E8943A) 13%, var(--color-surface, #fff));
+  color: var(--color-text, #1c1c1e);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  animation: fadeIn 0.28s ease;
+}
+
+.shortsLaunchBanner > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.shortsLaunchBanner strong {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.shortsLaunchBanner span {
+  color: var(--color-text-secondary, #636366);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.shortsLaunchActions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.shortsLaunchActions button:first-child {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--color-primary, #E8943A);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.shortsLaunchClose {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  color: var(--color-text-secondary, #636366);
+  background: rgba(255,255,255,0.58);
+}
+
+.shortsLaunchBtn {
+  position: relative;
+  color: #fff;
+  background: var(--color-primary, #E8943A);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary, #E8943A) 44%, transparent);
+  animation: shortsPulse 1.25s ease-out infinite;
+}
+
+.shortsLaunchBtn:hover {
+  color: #fff;
+  background: var(--color-primary, #E8943A);
+}
+
+@keyframes shortsPulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary, #E8943A) 48%, transparent); }
+  70% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-primary, #E8943A) 0%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary, #E8943A) 0%, transparent); }
+}
+
+@media (max-width: 380px) {
+  .shortsLaunchBanner {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .shortsLaunchActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
 /* 툴바: 정렬 + 액션 아이콘 한 줄 */
 .toolbar {
   display: flex;
@@ -378,11 +469,13 @@
 
 .fab:active { transform: scale(0.9); }
 
-@media (min-width: 640px) {
+/* 사이드바는 768px부터 뜬다(AppShell). 640~767px(갤폴드 펼침 ~717px)는 바텀탭 레이아웃이라
+   FAB가 유일한 업로드 수단 → 768px 전까진 FAB 유지(이전 640px에서 숨겨 갤폴드에서 업로드 불가했음). */
+@media (min-width: 768px) {
   .fab { display: none; }
 }
 
-@media (max-width: 639px) {
+@media (max-width: 767px) {
   .uploadBtn { display: none; }
 }
 
@@ -512,3 +605,19 @@
 }
 
 .shareBtn:disabled { opacity: 0.5; }
+
+.deleteSelBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  background: var(--color-danger, #FF3B30);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  transition: opacity var(--transition), transform 0.1s;
+}
+
+.deleteSelBtn:active:not(:disabled) { transform: scale(0.95); }
+.deleteSelBtn:disabled { opacity: 0.5; }

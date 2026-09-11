@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Login from './pages/Login';
 import AppShell from './components/layout/AppShell';
+import UpdateBanner from './components/UpdateBanner';
 
 export default function App() {
   const { user, loading, logout } = useAuth();
@@ -37,9 +38,12 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
-      <Route path="/*" element={user ? <AppShell user={user} onLogout={logout} /> : <Navigate to="/login" />} />
-    </Routes>
+    <>
+      {user && <UpdateBanner />}
+      <Routes>
+        <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+        <Route path="/*" element={user ? <AppShell user={user} onLogout={logout} /> : <Navigate to="/login" />} />
+      </Routes>
+    </>
   );
 }

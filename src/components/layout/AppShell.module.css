@@ -66,6 +66,14 @@
   font-weight: 600;
 }
 
+.navItem svg {
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+
+.navItemActive svg {
+  transform: scale(1.06);
+}
+
 .sidebarFooter {
   padding: 16px;
   border-top: 1px solid var(--color-border-light);
@@ -170,9 +178,39 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* 네이티브 앱(안드로이드 edge-to-edge): 상태바 높이만큼 상단 여백 — 헤더가 상태바에 안 잘리게 */
+  padding-top: env(safe-area-inset-top);
   padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom));
   overflow-y: auto;
+  overflow-x: hidden;            /* 페이지 전환 시 14px 슬라이드가 가로 스크롤을 만들지 않게 */
+  overscroll-behavior-y: contain; /* 스크롤 체이닝 / 의도치 않은 당겨서 새로고침 차단 */
   -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================================
+   Page Transition — 탭 전환이 점프컷이 아니라 방향을 갖고 들어온다
+   ============================================================ */
+
+.page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  animation: pageIn var(--dur-base) var(--ease-out) both;
+}
+
+.pageBack {
+  animation-name: pageInBack;
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translate3d(14px, 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes pageInBack {
+  from { opacity: 0; transform: translate3d(-14px, 0, 0); }
+  to   { opacity: 1; transform: none; }
 }
 
 /* ============================================================
@@ -195,6 +233,7 @@
 }
 
 .tabItem {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -204,16 +243,87 @@
   font-size: 10px;
   font-weight: 500;
   color: var(--color-text-tertiary);
-  transition: color var(--transition);
+  transition: color var(--dur-fast) var(--ease-out);
   padding: 6px 0;
+}
+
+/* 활성 탭 상단 인디케이터 — 색만 바뀌던 전환에 위치감을 준다 */
+.tabItem::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  width: 20px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--color-primary);
+  transform: translateX(-50%) scaleX(0);
+  opacity: 0;
+  transition: transform var(--dur-base) var(--ease-spring), opacity var(--dur-fast) var(--ease-out);
+}
+
+.tabItem svg {
+  transition: transform var(--dur-base) var(--ease-spring);
+}
+
+.tabItem span {
+  transition: font-weight var(--dur-fast) var(--ease-out);
+}
+
+.tabItem:active svg {
+  transform: scale(0.88);
+  transition-duration: var(--dur-instant);
 }
 
 .tabItemActive {
   color: var(--color-primary);
 }
 
+.tabItemActive::before {
+  transform: translateX(-50%) scaleX(1);
+  opacity: 1;
+}
+
+.tabItemActive svg {
+  transform: translateY(-1px) scale(1.08);
+}
+
+.tabItemActive span {
+  font-weight: 700;
+}
+
 .tabItem[target="_blank"] {
   text-decoration: none;
+}
+
+/* 탭이 7칸(홈·갤러리·여행·육아·생활·설정·콩땅)이라 좁은 화면에선 아이콘/글자를 줄인다 */
+@media (max-width: 380px) {
+  .tabItem {
+    font-size: 9.5px;
+    gap: 1px;
+    padding: 5px 0;
+  }
+
+  .tabItem svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Galaxy Fold 접힌 상태: 설정을 바텀탭에서 숨겨 칸당 44px 이상 확보(설정은 사이드바/직접 이동) */
+@media (max-width: 300px) {
+  .tabItemNarrowHide {
+    display: none;
+  }
+
+  .tabItem {
+    font-size: 9px;
+  }
+
+  .tabItem svg {
+    width: 19px;
+    height: 19px;
+  }
 }
 
 /* ============================================================

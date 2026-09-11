@@ -3,11 +3,13 @@ import fastifyStatic from '@fastify/static';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
+import fastifyRateLimit from '@fastify/rate-limit';
 import path from 'path';
 import fs from 'fs';
 import { registerAuthRoutes } from './auth.js';
 import { registerMediaRoutes } from './routes/media.js';
 import { registerAlbumRoutes } from './routes/album.js';
+import { registerTripPlanRoutes } from './routes/trip-plan.js';
 import { registerInteractionRoutes } from './routes/interaction.js';
 import { registerUserRoutes } from './routes/user.js';
 import { registerPushRoutes } from './push.js';
@@ -17,6 +19,7 @@ import { registerNoteRoutes } from './routes/note.js';
 import { registerLlmRoutes } from './routes/llm.js';
 import { registerBabyRoutes } from './routes/baby.js';
 import { registerHomeRoutes } from './routes/home.js';
+import { registerAppRoutes } from './routes/app.js';
 import { startHealthCheck } from './llm-health.js';
 import { startAutoSleepCheck } from './auto-sleep.js';
 
@@ -26,6 +29,10 @@ const app = Fastify({ logger: true });
 await app.register(fastifyCors, { origin: true, credentials: true });
 await app.register(fastifyCookie);
 await app.register(fastifyMultipart, { limits: { fileSize: 10 * 1024 * 1024 * 1024 } }); // 10GB
+// 공개/민감 엔드포인트 남용 방지(라우트별 opt-in). 일반 미디어 라우트엔 영향 없음.
+// 주의: 리버스 프록시가 모든 외부 클라를 동일 내부 IP로 합쳐 보내 IP 기반 키는 사실상 전역이다.
+// 그래서 핫한 /api/auth/token은 IP 플러그인 대신 auth.ts에서 토큰별로 직접 제한한다.
+await app.register(fastifyRateLimit, { global: false });
 
 // 캐시 제어
 app.addHook('onSend', (request, reply, _payload, done) => {
@@ -43,6 +50,7 @@ app.addHook('onSend', (request, reply, _payload, done) => {
 registerAuthRoutes(app);
 registerMediaRoutes(app);
 registerAlbumRoutes(app);
+registerTripPlanRoutes(app);
 registerInteractionRoutes(app);
 registerUserRoutes(app);
 registerPushRoutes(app);
@@ -52,6 +60,7 @@ registerNoteRoutes(app);
 registerLlmRoutes(app);
 registerBabyRoutes(app);
 registerHomeRoutes(app);
+registerAppRoutes(app);
 
 // SPA 정적 파일 서빙 (production)
 const publicDir = path.resolve('dist/public');

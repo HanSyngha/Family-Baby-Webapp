@@ -1,9 +1,9 @@
 const BASE = '/api';
 const IS_PWA = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
+let refreshPromise: Promise<boolean> | null = null;
 
-async function request<T>(url: string, options?: RequestInit & { skipAuthRedirect?: boolean }): Promise<T> {
-  const { skipAuthRedirect, ...fetchOptions } = options || {};
-  const res = await fetch(BASE + url, {
+function buildFetchOptions(fetchOptions?: RequestInit): RequestInit {
+  return {
     credentials: 'include',
     ...fetchOptions,
     headers: {
@@ -11,7 +11,26 @@ async function request<T>(url: string, options?: RequestInit & { skipAuthRedirec
       ...(!fetchOptions?.body || fetchOptions.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...fetchOptions?.headers,
     },
-  });
+  };
+}
+
+async function refreshSession(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = fetch(BASE + '/auth/refresh', buildFetchOptions({ method: 'POST' }))
+      .then((res) => res.ok)
+      .catch(() => false)
+      .finally(() => { refreshPromise = null; });
+  }
+  return refreshPromise;
+}
+
+async function request<T>(url: string, options?: RequestInit & { skipAuthRedirect?: boolean }): Promise<T> {
+  const { skipAuthRedirect, ...fetchOptions } = options || {};
+  let res = await fetch(BASE + url, buildFetchOptions(fetchOptions));
+  if (res.status === 401 && url !== '/auth/refresh' && url !== '/auth/logout') {
+    const refreshed = await refreshSession();
+    if (refreshed) res = await fetch(BASE + url, buildFetchOptions(fetchOptions));
+  }
   if (res.status === 401) {
     if (!skipAuthRedirect && !window.location.pathname.startsWith('/login')) {
       window.location.href = '/login';
@@ -63,6 +82,8 @@ export interface MediaItem {
   takenAt?: string | null;
   visibility?: 'shared' | 'private';
   ownerId?: number | null;
+  inTrip?: boolean;        // 여행 앨범에 들어있나
+  inPeanut?: boolean;      // 땅콩땅콩(구앱)에 공유됐나
   lat?: number | null;
   lng?: number | null;
   livePhotoGroup?: string | null;
@@ -101,6 +122,124 @@ export interface PlaceSuggestion {
   startAt: string;
   endAt: string;
   mediaIds: number[];
+}
+
+// ============================================================
+// 여행 계획(견적)
+// ============================================================
+
+export type TripPlanStatus = 'draft' | 'published' | 'archived';
+export type TripOptionCategory = 'flight' | 'lodging' | 'transport' | 'activity' | 'food' | 'etc';
+
+export interface TripPlan {
+  id: number;
+  ownerId: number;
+  title: string;
+  destination: string;
+  startDate: string | null;
+  endDate: string | null;
+  adults: number;
+  children: number;
+  budgetKrw: number | null;
+  memo: string;
+  status: TripPlanStatus;
+  /** 플래너에게만 실제 값이 내려온다(뷰어는 항상 0). */
+  displayDiscountPct: number;
+  albumId: number | null;
+  sortOrder: number;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  canEdit: boolean;
+  /** 목록 카드용 집계 */
+  totalKrw?: number | null;
+  scenarioCount?: number;
+  optionCount?: number;
+}
+
+export interface TripPlanOption {
+  id: number;
+  planId: number;
+  category: TripOptionCategory;
+  title: string;
+  provider: string;
+  priceKrw: number | null;
+  priceNote: string;
+  startAt: string | null;
+  endAt: string | null;
+  durationMin: number | null;
+  location: string;
+  url: string;
+  rating: number | null;
+  pros: string;
+  cons: string;
+  memo: string;
+  createdBy: 'manual' | 'agent';
+  sortOrder: number;
+  lat?: number | null;
+  lng?: number | null;
+  photos?: TripOptionPhoto[];
+}
+
+export interface TripOptionPhoto {
+  id: number;
+  filename: string;
+  caption: string;
+}
+
+export interface TripPlanScenario {
+  id: number;
+  planId: number;
+  title: string;
+  memo: string;
+  extraKrw: number;
+  isPreferred: boolean;
+  sortOrder: number;
+  optionIds: number[];
+  optionQty: Record<string, number>;
+  optionsKrw: number;
+  totalKrw: number;
+}
+
+export interface TripPlanItem {
+  id: number;
+  planId: number;
+  scenarioId: number | null;
+  optionId: number | null;
+  dayIndex: number;
+  date: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  title: string;
+  place: string;
+  costKrw: number | null;
+  memo: string;
+  sortOrder: number;
+  lat?: number | null;
+  lng?: number | null;
+}
+
+export interface TripPlanRequest {
+  id: number;
+  planId: number;
+  content: string;
+  status: 'open' | 'done';
+  resultNote: string;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
+export interface TripPlanDetail {
+  plan: TripPlan;
+  options: TripPlanOption[];
+  scenarios: TripPlanScenario[];
+  items: TripPlanItem[];
+  requests: TripPlanRequest[];
+  isPlanner: boolean;
+  /** 실제 플래너 화면으로 응답했는지 (와이프 뷰 미리보기면 false) */
+  asPlanner?: boolean;
+  preview?: boolean;
+  previewNotVisibleYet?: boolean;
 }
 
 export interface Comment {
@@ -427,6 +566,14 @@ export const api = {
   getMe: () => request<User>('/auth/me', { skipAuthRedirect: true }),
   logout: () => request<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
 
+  // 기기 세션(네이티브 백업용 refresh token + 원격 로그아웃)
+  registerDevice: (deviceName: string) =>
+    request<{ refreshToken: string }>('/auth/device', { method: 'POST', body: JSON.stringify({ deviceName }) }),
+  getSessions: () =>
+    request<{ id: number; deviceName: string | null; createdAt: string; lastUsedAt: string | null; revokedAt: string | null }[]>('/auth/sessions'),
+  revokeSession: (id: number) =>
+    request<{ ok: boolean }>(`/auth/sessions/${id}/revoke`, { method: 'POST' }),
+
   // Users
   getUsers: () => request<User[]>('/users'),
   getUsersAdmin: () => request<any[]>('/users/admin'),
@@ -449,12 +596,25 @@ export const api = {
       `/media${qs ? `?${qs}` : ''}`,
     );
   },
+  getVideoFeed: (cursor?: string | null, scope?: string) => {
+    const params = new URLSearchParams();
+    if (cursor) params.set('cursor', cursor);
+    if (scope) params.set('scope', scope);
+    const qs = params.toString();
+    return request<{ items: MediaItem[]; nextCursor: string | null }>(
+      `/media/videos${qs ? `?${qs}` : ''}`,
+    );
+  },
   getMediaDetail: (id: number) => request<MediaItem>(`/media/${id}`),
   getMediaIds: (scope?: string) => request<{ items: { id: number; filename: string; type: string; createdAt: string }[] }>(`/media/ids${scope ? `?scope=${scope}` : ''}`),
-  uploadFile: (file: File, onProgress?: (pct: number) => void, visibility?: string) => {
+  uploadFile: (file: File, onProgress?: (pct: number) => void, visibility?: string, albumId?: number) => {
     return new Promise<{ ok: boolean; filename?: string; duplicate?: boolean }>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${BASE}/media/upload${visibility ? `?visibility=${visibility}` : ''}`);
+      const qp = new URLSearchParams();
+      if (visibility) qp.set('visibility', visibility);
+      if (albumId) qp.set('albumId', String(albumId));
+      const qs = qp.toString();
+      xhr.open('POST', `${BASE}/media/upload${qs ? `?${qs}` : ''}`);
       xhr.withCredentials = true;
       xhr.setRequestHeader('X-App-Mode', IS_PWA ? 'pwa' : 'browser');
       xhr.upload.onprogress = (e) => {
@@ -476,7 +636,7 @@ export const api = {
     });
   },
   checkDuplicate: (hash: string) =>
-    request<{ duplicate: boolean; existingId: number | null }>('/media/check-duplicate', {
+    request<{ duplicate: boolean; existingId: number | null; existingVisibility?: string; existingMine?: boolean; tombstone?: boolean }>('/media/check-duplicate', {
       method: 'POST',
       body: JSON.stringify({ hash }),
     }),
@@ -537,6 +697,7 @@ export const api = {
   deletePlace: (id: number) => request<{ ok: boolean }>(`/places/${id}`, { method: 'DELETE' }),
   suggestPlaces: (mediaIds: number[]) => request<{ clusters: PlaceSuggestion[]; noGpsMediaIds: number[] }>('/albums/suggest-places', { method: 'POST', body: JSON.stringify({ mediaIds }) }),
   promoteToShared: (mediaIds: number[], albumId?: number | null) => request<{ ok: boolean; promoted: number; addedToAlbum: number }>('/media/promote-to-shared', { method: 'POST', body: JSON.stringify({ mediaIds, albumId }) }),
+  unshare: (mediaIds: number[]) => request<{ ok: boolean; unshared: number }>('/media/unshare', { method: 'POST', body: JSON.stringify({ mediaIds }) }),
   copyToPeanut: (ids: number[]) =>
     request<{ copied: number; duplicates: number; errors: string[] }>(
       '/media/copy-to-peanut',
@@ -559,6 +720,48 @@ export const api = {
     }),
   deleteComment: (id: number) =>
     request<{ ok: boolean }>(`/comments/${id}`, { method: 'DELETE' }),
+
+  // 여행 계획(견적) — 작성은 플래너(한승하)만, 다른 master는 공개된 것만 읽기
+  // viewAs='viewer'면 상대(황하람)가 보는 화면을 서버가 그대로 만들어 준다.
+  getTripPlans: (viewAs?: 'viewer') =>
+    request<{ items: TripPlan[]; isPlanner: boolean; asPlanner: boolean; preview: boolean; plannerName: string }>(
+      `/trip-plans${viewAs ? `?viewAs=${viewAs}` : ''}`,
+    ),
+  getTripPlan: (id: number, viewAs?: 'viewer') =>
+    request<TripPlanDetail>(`/trip-plans/${id}${viewAs ? `?viewAs=${viewAs}` : ''}`),
+  createTripPlan: (data: { title: string; destination?: string; startDate?: string | null; endDate?: string | null; adults?: number; children?: number; budgetKrw?: number | null; memo?: string }) =>
+    request<TripPlan>('/trip-plans', { method: 'POST', body: JSON.stringify(data) }),
+  updateTripPlan: (id: number, data: Partial<Pick<TripPlan, 'title' | 'destination' | 'startDate' | 'endDate' | 'adults' | 'children' | 'budgetKrw' | 'memo' | 'status' | 'displayDiscountPct' | 'sortOrder'>>) =>
+    request<TripPlan>(`/trip-plans/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteTripPlan: (id: number) => request<{ ok: boolean }>(`/trip-plans/${id}`, { method: 'DELETE' }),
+
+  addTripOptions: (planId: number, options: Partial<TripPlanOption>[]) =>
+    request<{ ok: boolean; added: number; options: TripPlanOption[] }>(`/trip-plans/${planId}/options`, { method: 'POST', body: JSON.stringify({ options }) }),
+  updateTripOption: (id: number, data: Partial<TripPlanOption>) =>
+    request<TripPlanOption>(`/trip-plan-options/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteTripOption: (id: number) => request<{ ok: boolean }>(`/trip-plan-options/${id}`, { method: 'DELETE' }),
+  addTripPhotos: (optionId: number, photos: { url: string; caption?: string }[]) =>
+    request<{ ok: boolean; saved: number; requested: number }>(`/trip-plan-options/${optionId}/photos`, { method: 'POST', body: JSON.stringify({ photos }) }),
+  deleteTripPhoto: (id: number) => request<{ ok: boolean }>(`/trip-plan-photos/${id}`, { method: 'DELETE' }),
+  tripPhotoUrl: (filename: string) => `${BASE}/trip-photos/${filename}`,
+
+  createTripScenario: (planId: number, data: { title: string; memo?: string; extraKrw?: number; optionIds?: number[] }) =>
+    request<TripPlanScenario>(`/trip-plans/${planId}/scenarios`, { method: 'POST', body: JSON.stringify(data) }),
+  updateTripScenario: (id: number, data: { title?: string; memo?: string; extraKrw?: number; isPreferred?: boolean; optionIds?: number[] }) =>
+    request<TripPlanScenario>(`/trip-plan-scenarios/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteTripScenario: (id: number) => request<{ ok: boolean }>(`/trip-plan-scenarios/${id}`, { method: 'DELETE' }),
+
+  addTripItems: (planId: number, items: Partial<TripPlanItem>[]) =>
+    request<{ ok: boolean; added: number; items: TripPlanItem[] }>(`/trip-plans/${planId}/items`, { method: 'POST', body: JSON.stringify({ items }) }),
+  updateTripItem: (id: number, data: Partial<TripPlanItem>) =>
+    request<TripPlanItem>(`/trip-plan-items/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteTripItem: (id: number) => request<{ ok: boolean }>(`/trip-plan-items/${id}`, { method: 'DELETE' }),
+
+  createTripRequest: (planId: number, content: string) =>
+    request<TripPlanRequest>(`/trip-plans/${planId}/requests`, { method: 'POST', body: JSON.stringify({ content }) }),
+  updateTripRequest: (id: number, data: { status?: 'open' | 'done'; content?: string; resultNote?: string }) =>
+    request<TripPlanRequest>(`/trip-plan-requests/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteTripRequest: (id: number) => request<{ ok: boolean }>(`/trip-plan-requests/${id}`, { method: 'DELETE' }),
 
   // Calendar
   getCalendarEvents: (month: string) =>
@@ -733,7 +936,14 @@ export const api = {
     request<{ ok: boolean }>(`/baby/${babyId}/chat`, { method: 'DELETE' }),
 
   // Media URLs
-  thumbUrl: (id: number, v?: string) => `${BASE}/media/${id}/thumb${v ? `?v=${v}` : ''}`,
+  // w: 640 | 1280 → 서버가 원본에서 파생본을 만들어 캐시해 돌려준다. 생략하면 기존 300px.
+  thumbUrl: (id: number, v?: string, w?: 640 | 1280) => {
+    const q = new URLSearchParams();
+    if (v) q.set('v', v);
+    if (w) q.set('w', String(w));
+    const qs = q.toString();
+    return `${BASE}/media/${id}/thumb${qs ? `?${qs}` : ''}`;
+  },
   fileUrl: (id: number, v?: string) => `${BASE}/media/${id}/file${v ? `?v=${v}` : ''}`,
   hlsUrl: (id: number) => `${BASE}/media/${id}/hls/playlist.m3u8`,
   downloadUrl: (id: number) => `${BASE}/media/${id}/download`,

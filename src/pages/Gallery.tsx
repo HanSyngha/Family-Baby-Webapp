@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { api, type User } from '../api';
 import GalleryView from './GalleryView';
-import TripGallery from './TripGallery';
 import styles from './Gallery.module.css';
 
 interface Props {
   user: User;
 }
 
-type Tab = 'seol' | 'trip' | 'private';
+// 여행 앨범은 바텀탭 '여행 > 앨범'으로 이동했다.
+type Tab = 'seol' | 'private';
 
 export default function Gallery({ user }: Props) {
   const isMaster = user.role === 'master';
@@ -23,7 +23,6 @@ export default function Gallery({ user }: Props) {
 
   const TABS: { value: Tab; label: string; lock?: boolean }[] = [
     { value: 'seol', label: '땅땅&콩콩' },
-    { value: 'trip', label: '여행' },
     ...(isMaster ? [{ value: 'private' as Tab, label: '개인', lock: true }] : []),
   ];
   const activeIdx = Math.max(0, TABS.findIndex(t => t.value === tab));
@@ -53,10 +52,6 @@ export default function Gallery({ user }: Props) {
       {/* 한설 = 공유 갤러리 전체 */}
       <div className={styles.tabContent} style={{ display: tab === 'seol' ? 'block' : 'none' }}>
         <GalleryView user={user} scope="shared" embedded babyBirth={babyBirth} />
-      </div>
-      {/* 여행 */}
-      <div className={styles.tabContent} style={{ display: tab === 'trip' ? 'block' : 'none' }}>
-        <TripGallery user={user} babyBirth={babyBirth} />
       </div>
       {/* 개인 (관리자만) */}
       {isMaster && (

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { authenticate } from '../auth.js';
-import db from '../db.js';
+import db, { peanutDb } from '../db.js';
 
 // 앨범 미디어 공통 SELECT (그리드/라이트박스가 쓰는 필드 + 좋아요/즐겨찾기 상태).
 // 바인딩 순서: liked(userId), favorited(userId).
@@ -43,7 +43,7 @@ function haversineM(aLat: number, aLng: number, bLat: number, bLng: number): num
 }
 
 // 앨범 기간 + 소속 장소 시간범위를 멤버 미디어의 촬영시각으로 재집계 (idempotent).
-function recomputeAlbum(albumId: number) {
+export function recomputeAlbum(albumId: number) {
   const places = db.prepare('SELECT id FROM trip_places WHERE albumId = ?').all(albumId) as { id: number }[];
   for (const p of places) {
     const r = db.prepare(`
@@ -268,6 +268,40 @@ export function registerAlbumRoutes(app: FastifyInstance) {
       recomputeAlbum(albumId);
     }
     return { ok: true, promoted: upd.changes, addedToAlbum: added };
+  });
+
+  // 공유 취소: 다시 개인공간(비공개)로. 본인이 올린 것만. 땅땅&콩콩/여행/땅콩땅콩에서 모두 내린다.
+  app.post('/api/media/unshare', { preHandler: authenticate }, async (request, reply) => {
+    if (!requireMaster(request, reply)) return;
+    const { userId } = (request as any).user;
+    const { mediaIds } = request.body as { mediaIds: number[] };
+    if (!Array.isArray(mediaIds) || mediaIds.length === 0) return reply.code(400).send({ error: '선택된 미디어 없음' });
+
+    // 본인이 올린 미디어만 대상(남의 사진은 못 내림)
+    const ph = placeholders(mediaIds.length);
+    const own = db.prepare(`SELECT id, hash FROM media WHERE id IN (${ph}) AND uploaderId = ?`).all(...mediaIds, userId) as { id: number; hash: string | null }[];
+    if (own.length === 0) return { ok: true, unshared: 0 };
+    const ownIds = own.map(m => m.id);
+    const oph = placeholders(ownIds.length);
+
+    const affectedAlbums = (db.prepare(`SELECT DISTINCT albumId FROM album_items WHERE mediaId IN (${oph})`).all(...ownIds) as { albumId: number }[]).map(r => r.albumId);
+
+    db.transaction(() => {
+      // 비공개로(소유자=본인 → 불변식 유지) + 여행 앨범에서 제거
+      db.prepare(`UPDATE media SET visibility = 'private', ownerId = ? WHERE id IN (${oph})`).run(userId, ...ownIds);
+      db.prepare(`DELETE FROM album_items WHERE mediaId IN (${oph})`).run(...ownIds);
+    })();
+    for (const aid of affectedAlbums) recomputeAlbum(aid);
+
+    // 땅콩땅콩(구앱)에서도 제거(해시 기준, DB 레코드만 — 파일은 가족 볼륨이라 보존)
+    if (peanutDb) {
+      const hashes = own.map(m => m.hash).filter(Boolean) as string[];
+      if (hashes.length) {
+        const hph = placeholders(hashes.length);
+        try { peanutDb.prepare(`DELETE FROM media WHERE hash IN (${hph})`).run(...hashes); } catch (e) { console.error('[unshare] peanut delete failed:', e); }
+      }
+    }
+    return { ok: true, unshared: own.length };
   });
 
   // GPS 시공간 클러스터링 → 장소 제안 (사용자가 이름만 입력하면 됨)

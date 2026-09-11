@@ -7,12 +7,23 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { pipeline } from 'stream/promises';
 import { v4 as uuidv4 } from 'uuid';
+import { ensureDerivative, parseDerivativeWidth } from '../derivatives.js';
 const DATA_DIR = path.resolve('data');
 
 function resolveDataDir(source: string | null): string {
   return source === 'peanut'
     ? (process.env.PEANUT_DATA_DIR || '/app/data-peanut')
     : DATA_DIR;
+}
+
+function parseVideoCursor(cursor?: string): { createdAt: string; id: number | null } | null {
+  if (!cursor) return null;
+  const [createdAt, id] = cursor.split('|');
+  return { createdAt, id: id ? parseInt(id) : null };
+}
+
+function makeVideoCursor(row: any): string {
+  return `${row.createdAt}|${row.id}`;
 }
 
 // 개인(비공개) 미디어 접근 가드. 비공개는 소유 관리자 본인만. 아니면 404로 위장.
@@ -36,7 +47,11 @@ export function registerMediaRoutes(app: FastifyInstance) {
     const scopeParams: any[] = [];
     if (scope === 'private') {
       if (role !== 'master') return { items: [], nextCursor: null };
-      scopeWhere = "m.visibility = 'private' AND m.ownerId = ?";
+      // 개인공간 = 내가 올린 사진 전부(공유 여부 무관). 백업이 채우고, 공유는 토글로.
+      // ⚠️ 불변식: 비공개(visibility='private') 행은 반드시 ownerId === uploaderId.
+      //    이 목록은 uploaderId 기준, 접근 게이트(assertMediaAccess)는 ownerId 기준이라
+      //    이 둘이 어긋나면 목록엔 뜨는데 서빙은 404가 된다. 비공개 INSERT 시 항상 동일하게.
+      scopeWhere = "m.uploaderId = ?";
       scopeParams.push(userId);
     } else {
       scopeWhere = "m.visibility = 'shared'";
@@ -54,7 +69,8 @@ export function registerMediaRoutes(app: FastifyInstance) {
         (SELECT json_group_array(json_object('userId', vu.id, 'name', vu.name, 'profileImage', vu.profileImage))
          FROM (SELECT DISTINCT vw.userId FROM views vw WHERE vw.mediaId = m.id) dv JOIN users vu ON vu.id = dv.userId) as viewersJson,
         (SELECT json_group_array(json_object('userId', du.id, 'name', du.name, 'profileImage', du.profileImage))
-         FROM downloads dl JOIN users du ON du.id = dl.userId WHERE dl.mediaId = m.id) as downloadersJson
+         FROM downloads dl JOIN users du ON du.id = dl.userId WHERE dl.mediaId = m.id) as downloadersJson,
+        EXISTS(SELECT 1 FROM album_items ai JOIN albums al ON al.id = ai.albumId WHERE ai.mediaId = m.id AND al.kind = 'trip') as inTrip
       FROM media m
       JOIN users u ON u.id = m.uploaderId
     `;
@@ -67,7 +83,11 @@ export function registerMediaRoutes(app: FastifyInstance) {
     } else if (sort === 'favorites') {
       rows = db.prepare(baseQuery + ` WHERE ${scopeWhere} AND EXISTS(SELECT 1 FROM favorites WHERE mediaId = m.id AND userId = ?) ORDER BY m.createdAt DESC`).all(userId, userId, ...scopeParams, userId);
     } else if (cursor) {
-      rows = db.prepare(baseQuery + ` WHERE ${scopeWhere} AND m.createdAt < ? ORDER BY m.createdAt DESC, m.id DESC LIMIT ?`).all(userId, userId, ...scopeParams, cursor, lim);
+      // 커서는 'createdAt|id' 복합키. id 없는 옛 커서(날짜 점프 등)는 createdAt만으로 비교.
+      const c = parseVideoCursor(cursor)!;
+      rows = c.id !== null && !Number.isNaN(c.id)
+        ? db.prepare(baseQuery + ` WHERE ${scopeWhere} AND (m.createdAt < ? OR (m.createdAt = ? AND m.id < ?)) ORDER BY m.createdAt DESC, m.id DESC LIMIT ?`).all(userId, userId, ...scopeParams, c.createdAt, c.createdAt, c.id, lim)
+        : db.prepare(baseQuery + ` WHERE ${scopeWhere} AND m.createdAt < ? ORDER BY m.createdAt DESC, m.id DESC LIMIT ?`).all(userId, userId, ...scopeParams, c.createdAt, lim);
     } else {
       rows = db.prepare(baseQuery + ` WHERE ${scopeWhere} ORDER BY m.createdAt DESC, m.id DESC LIMIT ?`).all(userId, userId, ...scopeParams, lim);
     }
@@ -77,12 +97,90 @@ export function registerMediaRoutes(app: FastifyInstance) {
       const viewers = isMaster && row.viewersJson ? JSON.parse(row.viewersJson).filter((v: any) => v.userId !== null) : [];
       const downloaders = isMaster && row.downloadersJson ? JSON.parse(row.downloadersJson).filter((d: any) => d.userId !== null) : [];
       const { viewersJson, downloadersJson, ...rest } = row;
-      return { ...rest, viewCount: row.viewCount || 0, shareCount: row.shareCount || 0, liked: !!row.liked, favorited: !!row.favorited, viewers, downloaders };
+      return { ...rest, viewCount: row.viewCount || 0, shareCount: row.shareCount || 0, liked: !!row.liked, favorited: !!row.favorited, inTrip: !!row.inTrip, inPeanut: false, viewers, downloaders };
     });
 
+    // 땅콩땅콩(구앱) 공유 여부 — 같은 해시가 peanutDb에 있는지 일괄 확인(페이지당 1쿼리)
+    if (peanutDb && items.length) {
+      const hashes = (items as any[]).map(i => i.hash).filter(Boolean);
+      if (hashes.length) {
+        const ph = hashes.map(() => '?').join(',');
+        const present = new Set((peanutDb.prepare(`SELECT hash FROM media WHERE hash IN (${ph})`).all(...hashes) as any[]).map((r: any) => r.hash));
+        for (const it of items as any[]) it.inPeanut = !!(it.hash && present.has(it.hash));
+      }
+    }
+
     const noPagination = sort === 'likes' || sort === 'views' || sort === 'favorites';
-    const nextCursor = noPagination ? null : (rows.length === lim ? rows[rows.length - 1].createdAt : null);
+    const nextCursor = noPagination ? null : (rows.length === lim ? makeVideoCursor(rows[rows.length - 1]) : null);
     return { items, nextCursor };
+  });
+
+  // 쇼츠형 영상 피드: 사진 목록과 분리해 영상만 커서 기반으로 가져온다.
+  app.get('/api/media/videos', { preHandler: authenticate }, async (request) => {
+    const { cursor, limit = '12', scope = 'shared' } = request.query as { cursor?: string; limit?: string; scope?: string };
+    const lim = Math.min(Math.max(parseInt(limit) || 12, 1), 24);
+    const { userId, role } = (request as any).user;
+
+    let scopeWhere: string;
+    const scopeParams: any[] = [];
+    if (scope === 'private') {
+      if (role !== 'master') return { items: [], nextCursor: null };
+      scopeWhere = 'm.uploaderId = ?';
+      scopeParams.push(userId);
+    } else {
+      scopeWhere = "m.visibility = 'shared'";
+    }
+
+    const baseQuery = `
+      SELECT m.*,
+        u.name as uploaderName, u.profileImage as uploaderImage,
+        (SELECT COUNT(*) FROM likes WHERE mediaId = m.id) as likeCount,
+        (SELECT COUNT(*) FROM comments WHERE mediaId = m.id) as commentCount,
+        (SELECT COUNT(*) FROM views WHERE mediaId = m.id) as viewCount,
+        (SELECT COUNT(*) FROM shares WHERE mediaId = m.id) as shareCount,
+        EXISTS(SELECT 1 FROM likes WHERE mediaId = m.id AND userId = ?) as liked,
+        EXISTS(SELECT 1 FROM favorites WHERE mediaId = m.id AND userId = ?) as favorited,
+        (SELECT json_group_array(json_object('userId', vu.id, 'name', vu.name, 'profileImage', vu.profileImage))
+         FROM (SELECT DISTINCT vw.userId FROM views vw WHERE vw.mediaId = m.id) dv JOIN users vu ON vu.id = dv.userId) as viewersJson,
+        (SELECT json_group_array(json_object('userId', du.id, 'name', du.name, 'profileImage', du.profileImage))
+         FROM downloads dl JOIN users du ON du.id = dl.userId WHERE dl.mediaId = m.id) as downloadersJson,
+        EXISTS(SELECT 1 FROM album_items ai JOIN albums al ON al.id = ai.albumId WHERE ai.mediaId = m.id AND al.kind = 'trip') as inTrip
+      FROM media m
+      JOIN users u ON u.id = m.uploaderId
+      WHERE ${scopeWhere} AND m.type = 'video'
+    `;
+
+    const parsedCursor = parseVideoCursor(cursor);
+    let rows: any[];
+    if (parsedCursor?.id) {
+      rows = db.prepare(baseQuery + ' AND (m.createdAt < ? OR (m.createdAt = ? AND m.id < ?)) ORDER BY m.createdAt DESC, m.id DESC LIMIT ?')
+        .all(userId, userId, ...scopeParams, parsedCursor.createdAt, parsedCursor.createdAt, parsedCursor.id, lim);
+    } else if (parsedCursor) {
+      rows = db.prepare(baseQuery + ' AND m.createdAt < ? ORDER BY m.createdAt DESC, m.id DESC LIMIT ?')
+        .all(userId, userId, ...scopeParams, parsedCursor.createdAt, lim);
+    } else {
+      rows = db.prepare(baseQuery + ' ORDER BY m.createdAt DESC, m.id DESC LIMIT ?')
+        .all(userId, userId, ...scopeParams, lim);
+    }
+
+    const isMaster = role === 'master';
+    const items = rows.map((row: any) => {
+      const viewers = isMaster && row.viewersJson ? JSON.parse(row.viewersJson).filter((v: any) => v.userId !== null) : [];
+      const downloaders = isMaster && row.downloadersJson ? JSON.parse(row.downloadersJson).filter((d: any) => d.userId !== null) : [];
+      const { viewersJson, downloadersJson, ...rest } = row;
+      return { ...rest, viewCount: row.viewCount || 0, shareCount: row.shareCount || 0, liked: !!row.liked, favorited: !!row.favorited, inTrip: !!row.inTrip, inPeanut: false, viewers, downloaders };
+    });
+
+    if (peanutDb && items.length) {
+      const hashes = (items as any[]).map(i => i.hash).filter(Boolean);
+      if (hashes.length) {
+        const ph = hashes.map(() => '?').join(',');
+        const present = new Set((peanutDb.prepare(`SELECT hash FROM media WHERE hash IN (${ph})`).all(...hashes) as any[]).map((r: any) => r.hash));
+        for (const it of items as any[]) it.inPeanut = !!(it.hash && present.has(it.hash));
+      }
+    }
+
+    return { items, nextCursor: rows.length === lim ? makeVideoCursor(rows[rows.length - 1]) : null };
   });
 
   // 전체 미디어 ID 목록 (랜덤 재생용, 가벼움)
@@ -91,7 +189,7 @@ export function registerMediaRoutes(app: FastifyInstance) {
     const { userId, role } = (request as any).user;
     if (scope === 'private') {
       if (role !== 'master') return { items: [] };
-      const rows = db.prepare("SELECT id, filename, type, createdAt FROM media WHERE visibility = 'private' AND ownerId = ? ORDER BY createdAt DESC").all(userId);
+      const rows = db.prepare("SELECT id, filename, type, createdAt FROM media WHERE uploaderId = ? ORDER BY createdAt DESC").all(userId);
       return { items: rows };
     }
     const rows = db.prepare("SELECT id, filename, type, createdAt FROM media WHERE visibility = 'shared' ORDER BY createdAt DESC").all();
@@ -115,7 +213,8 @@ export function registerMediaRoutes(app: FastifyInstance) {
         (SELECT json_group_array(json_object('userId', vu.id, 'name', vu.name, 'profileImage', vu.profileImage))
          FROM (SELECT DISTINCT vw.userId FROM views vw WHERE vw.mediaId = m.id) dv JOIN users vu ON vu.id = dv.userId) as viewersJson,
         (SELECT json_group_array(json_object('userId', du.id, 'name', du.name, 'profileImage', du.profileImage))
-         FROM downloads dl JOIN users du ON du.id = dl.userId WHERE dl.mediaId = m.id) as downloadersJson
+         FROM downloads dl JOIN users du ON du.id = dl.userId WHERE dl.mediaId = m.id) as downloadersJson,
+        EXISTS(SELECT 1 FROM album_items ai JOIN albums al ON al.id = ai.albumId WHERE ai.mediaId = m.id AND al.kind = 'trip') as inTrip
       FROM media m
       JOIN users u ON u.id = m.uploaderId
       WHERE m.id = ?
@@ -128,15 +227,29 @@ export function registerMediaRoutes(app: FastifyInstance) {
     const viewers = isMaster && row.viewersJson ? JSON.parse(row.viewersJson).filter((v: any) => v.userId !== null) : [];
     const downloaders = isMaster && row.downloadersJson ? JSON.parse(row.downloadersJson).filter((d: any) => d.userId !== null) : [];
     const { viewersJson, downloadersJson, ...rest } = row;
-    return { ...rest, viewCount: row.viewCount || 0, liked: !!row.liked, favorited: !!row.favorited, viewers, downloaders };
+    const inPeanut = !!(row.hash && peanutDb && peanutDb.prepare('SELECT 1 FROM media WHERE hash = ?').get(row.hash));
+    return { ...rest, viewCount: row.viewCount || 0, liked: !!row.liked, favorited: !!row.favorited, inTrip: !!row.inTrip, inPeanut, viewers, downloaders };
   });
 
   // 업로드 전 중복 체크 (해시)
   app.post('/api/media/check-duplicate', { preHandler: authenticate }, async (request) => {
     const { hash } = request.body as { hash: string };
-    if (!hash) return { duplicate: false };
-    const existing = db.prepare('SELECT id FROM media WHERE hash = ?').get(hash) as any;
-    return { duplicate: !!existing, existingId: existing?.id ?? null };
+    if (!hash) return { duplicate: false, existingId: null };
+    const { userId } = (request as any).user;
+    const existing = db.prepare('SELECT id, visibility, uploaderId FROM media WHERE hash = ?').get(hash) as any;
+    if (existing) {
+      // 재업로드를 공유로 전환하려면 기존 사진의 상태가 필요(내 비공개면 promote 가능)
+      return {
+        duplicate: true,
+        existingId: existing.id,
+        existingVisibility: existing.visibility,
+        existingMine: existing.uploaderId === userId,
+      };
+    }
+    // 삭제 묘비(tombstone): 폰 백업은 duplicate로 보고 스킵, 웹 수동 업로드는 tombstone 플래그로 무시하고 진행.
+    const tomb = db.prepare('SELECT hash FROM deleted_hashes WHERE hash = ?').get(hash) as any;
+    if (tomb) return { duplicate: true, tombstone: true, existingId: null };
+    return { duplicate: false, existingId: null };
   });
 
   // 처리 큐 상태
@@ -160,7 +273,16 @@ export function registerMediaRoutes(app: FastifyInstance) {
     app.log.info({ originalName: data.filename, mimeType, type }, 'Upload started');
 
     // 파일 저장 (pipeline으로 안전하게 스트림 처리)
-    await pipeline(data.file, fs.createWriteStream(filePath));
+    // 중간에 끊기면(프록시 60s 타임아웃·네트워크 끊김 등) partial 파일이 originals/에 남아
+    // DB 미참조 고아로 쌓인다 → 실패 시 즉시 삭제하고 끝낸다.
+    try {
+      await pipeline(data.file, fs.createWriteStream(filePath));
+    } catch (err) {
+      try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch {}
+      app.log.warn({ originalName: data.filename, filename, err: String(err) }, 'Upload stream failed → partial 삭제');
+      if (!reply.sent) reply.code(499).send({ error: 'Upload interrupted' });
+      return;
+    }
 
     const stat = fs.statSync(filePath);
     app.log.info({ originalName: data.filename, size: stat.size, filename }, 'File saved');
@@ -178,10 +300,16 @@ export function registerMediaRoutes(app: FastifyInstance) {
 
     const { userId: uploaderId, role } = (request as any).user;
     // 개인(비공개) 업로드는 관리자만. 그 외는 공유.
-    const { visibility } = request.query as { visibility?: string };
+    const { visibility, albumId } = request.query as { visibility?: string; albumId?: string };
     const vis = (visibility === 'private' && role === 'master') ? 'private' : 'shared';
     const ownerId = vis === 'private' ? uploaderId : null;
-    enqueue({ filename, originalName: data.filename, mimeType, type, size: stat.size, uploaderId, hash: fileHash, visibility: vis, ownerId });
+    // 여행 앨범으로 바로 업로드(#4): 공유 사진 + 그 앨범에 추가. master + 존재하는 앨범만.
+    let targetAlbumId: number | null = null;
+    if (albumId && vis === 'shared' && role === 'master') {
+      const a = db.prepare('SELECT id FROM albums WHERE id = ?').get(parseInt(albumId)) as any;
+      if (a) targetAlbumId = a.id;
+    }
+    enqueue({ filename, originalName: data.filename, mimeType, type, size: stat.size, uploaderId, hash: fileHash, visibility: vis, ownerId, albumId: targetAlbumId });
     app.log.info({ originalName: data.filename, uploaderId, filename }, 'Enqueued for processing');
 
     return { ok: true, filename };
@@ -244,6 +372,9 @@ export function registerMediaRoutes(app: FastifyInstance) {
       if (fs.existsSync(hlsDir)) fs.rmSync(hlsDir, { recursive: true });
     }
 
+    // 삭제 묘비 기록: 폰 자동백업이 이 사진을 다시 올리지 않게(수동 재업로드는 가능 — useUploadQueue가 tombstone 무시).
+    if (media.hash) db.prepare('INSERT OR IGNORE INTO deleted_hashes (hash) VALUES (?)').run(media.hash);
+
     db.prepare('DELETE FROM media WHERE id = ?').run(parseInt(id));
     return { ok: true };
   });
@@ -290,9 +421,23 @@ export function registerMediaRoutes(app: FastifyInstance) {
   app.get('/api/media/:id/thumb', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const { userId, role } = (request as any).user;
-    const media = db.prepare('SELECT filename, source, visibility, ownerId FROM media WHERE id = ?').get(parseInt(id)) as any;
+    const media = db.prepare('SELECT filename, type, source, visibility, ownerId FROM media WHERE id = ?').get(parseInt(id)) as any;
     if (!media) return reply.code(404).send({ error: 'Not found' });
     if (!assertMediaAccess(media, { userId, role }, reply)) return;
+
+    // ?w=640|1280 → 고해상도 파생본. 없으면 원본에서 만들어 캐시한다.
+    // (실패하면 아래 300px 썸네일로 조용히 폴백)
+    const width = parseDerivativeWidth((request.query as any)?.w);
+    if (width) {
+      const deriv = await ensureDerivative(resolveDataDir(media.source), media.filename, media.type, width);
+      if (deriv) {
+        reply.headers({
+          'Content-Type': 'image/webp',
+          'Cache-Control': 'max-age=31536000, immutable',
+        });
+        return reply.send(fs.createReadStream(deriv));
+      }
+    }
 
     const thumbPath = path.join(resolveDataDir(media.source), 'thumbnails', media.filename + '.webp');
     if (!fs.existsSync(thumbPath)) return reply.code(404).send({ error: 'Thumbnail not found' });

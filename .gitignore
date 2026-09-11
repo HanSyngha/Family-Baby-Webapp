@@ -9,3 +9,14 @@ data/
 /*.png
 /*.jpg
 /*.ico
+
+# Android (Capacitor) — 생성물 및 서명키
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/src/main/assets/public/
+android/capacitor-cordova-android-plugins/build/
+# 릴리스 서명키 — 절대 커밋 금지
+android/keystore.properties
+android/*.jks

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { api, type User, type LlmConfig } from '../api';
 import { usePushNotification } from '../hooks/usePushNotification';
 import { useInstallPrompt } from '../hooks/useInstallPrompt';
+import BackupSettings from '../components/settings/BackupSettings';
+import { isNativeApp } from '../lib/backup';
 import s from './Settings.module.css';
 
 interface Props {
@@ -39,6 +41,8 @@ export default function Settings({ user, onLogout }: Props) {
   const { pushState, togglePush } = usePushNotification(true);
   const { canInstall, isInstalled, install } = useInstallPrompt();
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [appVer, setAppVer] = useState<{ versionName?: string; versionCode?: number } | null>(null);
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
   // LLM state
   const [configs, setConfigs] = useState<LlmConfig[]>([]);
@@ -90,6 +94,12 @@ export default function Settings({ user, onLogout }: Props) {
   }, [isMaster]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // 안드로이드 앱 최신 버전 (다운로드 버튼 라벨용, master만)
+  useEffect(() => {
+    if (!isMaster) return;
+    fetch('/api/app/version').then(r => r.ok ? r.json() : null).then(setAppVer).catch(() => {});
+  }, [isMaster]);
 
   // Admin data fetch
   const fetchAdminData = useCallback(async () => {
@@ -262,6 +272,9 @@ export default function Settings({ user, onLogout }: Props) {
           </div>
         </div>
       </div>
+
+      {/* 사진 자동 백업 (master + 네이티브 앱에서만 표시) */}
+      {isMaster && <BackupSettings />}
 
       {/* LLM Config (master only) */}
       {isMaster && (
@@ -450,6 +463,28 @@ export default function Settings({ user, onLogout }: Props) {
           )}
         </div>
       </div>
+
+      {/* 안드로이드 앱 다운로드 (master + 웹/안드로이드에서만 — 앱 안/iOS에선 숨김) */}
+      {isMaster && !isNativeApp && !isIOS && (
+        <div className={s.section}>
+          <div className={s.settingsRow}>
+            <div>
+              <div className={s.settingsLabel}>안드로이드 앱</div>
+              <div className={s.settingsDesc}>
+                백그라운드 자동백업 앱{appVer?.versionName ? ` · 최신 v${appVer.versionName}` : ''}
+              </div>
+            </div>
+            <a className={s.installBtn} href="/api/app/download" download style={{ textDecoration: 'none' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              다운로드
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* App Info */}
       <div className={s.appInfo}>

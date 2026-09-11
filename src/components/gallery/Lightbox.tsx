@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import type { MediaItem, User } from '../../api';
 import { api } from '../../api';
 import Hls from 'hls.js';
@@ -21,14 +21,31 @@ interface Props {
   onFavoriteToggle: (id: number, favorited: boolean) => void;
   onDateChange: (id: number, createdAt: string) => void;
   initialSlideshow?: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 function toSlides(items: MediaItem[]): Slide[] {
   return items.map(item => {
     if (item.type === 'video') {
-      return { src: api.thumbUrl(item.id, item.filename), mediaItem: item } as any;
+      return { src: api.thumbUrl(item.id, item.filename, 1280), mediaItem: item } as any;
     }
-    return { src: api.fileUrl(item.id, item.filename), alt: item.originalName };
+    // 원본(수 MB)을 바로 받으면 열자마자 뿌연 채로 한참 멈춰 있다.
+    // 1280 파생본을 먼저 띄우고, 확대(zoom)할 때만 원본까지 올라가게 srcSet으로 계단을 만든다.
+    const w = item.width ?? 1280;
+    const h = item.height ?? 1280;
+    const ratio = h / w;
+    return {
+      src: api.thumbUrl(item.id, item.filename, 1280),
+      alt: item.originalName,
+      width: w,
+      height: h,
+      srcSet: [
+        { src: api.thumbUrl(item.id, item.filename, 640), width: 640, height: Math.round(640 * ratio) },
+        { src: api.thumbUrl(item.id, item.filename, 1280), width: 1280, height: Math.round(1280 * ratio) },
+        { src: api.fileUrl(item.id, item.filename), width: w, height: h },
+      ],
+    };
   });
 }
 
@@ -91,9 +108,9 @@ function HlsVideoSlide({ item, onEnded }: { item: MediaItem; onEnded?: () => voi
   );
 }
 
-export default function Lightbox({ items, index, user, onClose, onNavigate, onDelete, onLikeToggle, onFavoriteToggle, onDateChange, initialSlideshow }: Props) {
+export default function Lightbox({ items, index, user, onClose, onNavigate, onDelete, onLikeToggle, onFavoriteToggle, onDateChange, initialSlideshow, hasMore, onLoadMore }: Props) {
   const item = items[index];
-  const slides = toSlides(items);
+  const slides = useMemo(() => toSlides(items), [items]);
   const viewedRef = useRef<Set<number>>(new Set());
   const mediaSectionRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -115,6 +132,11 @@ export default function Lightbox({ items, index, user, onClose, onNavigate, onDe
     const day = Math.floor((new Date(dk + 'T00:00:00').getTime() - new Date(e.startDate + 'T00:00:00').getTime()) / 86400000) + 1;
     return { text: `${e.title} ${day}일차`, color: e.color };
   })();
+
+  // 끝에 가까워지면 다음 페이지 프리페치 (안 하면 로드된 페이지 끝에서 넘기기가 막힌다)
+  useEffect(() => {
+    if (hasMore && onLoadMore && index >= items.length - 3) onLoadMore();
+  }, [index, items.length, hasMore, onLoadMore]);
 
   // 조회 기록
   useEffect(() => {

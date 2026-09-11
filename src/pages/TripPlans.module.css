@@ -1,0 +1,1594 @@
+/* ============================================================
+   여행 계획(견적)
+   ============================================================ */
+
+.list,
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px calc(var(--tab-bar-height) + env(safe-area-inset-bottom) + 32px);
+}
+
+/* 대형 화면에서 콘텐츠가 가로로 늘어지지 않게 폭 제한 + 가운데 정렬 */
+@media (min-width: 1100px) {
+  .list,
+  .detail {
+    width: 100%;
+    max-width: 1040px;
+    margin: 0 auto;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+.loading,
+.empty,
+.sectionEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 48px 20px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  text-align: center;
+}
+
+.emptyIllust {
+  font-size: 44px;
+  margin-bottom: 4px;
+}
+
+.empty p,
+.sectionEmpty p {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.emptyHint,
+.sectionEmpty span {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  line-height: 1.5;
+}
+
+.emptyBtn {
+  margin-top: 12px;
+  padding: 11px 22px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ---------- 목록 카드 ---------- */
+
+.cards {
+  display: grid;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .cards {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card:active {
+  transform: scale(0.985);
+  box-shadow: var(--shadow);
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cardTitle {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.badgeDraft {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+}
+
+.badgePublished {
+  background: rgba(52, 199, 89, 0.14);
+  color: #248a3d;
+}
+
+.cardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.cardFooter {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.cardTotal {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cardTotalLabel {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  font-weight: 600;
+}
+
+.cardTotal strong {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-text);
+  letter-spacing: -0.5px;
+}
+
+.cardCounts {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.cardDiscount {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-bg);
+  color: #a8641c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fab {
+  position: fixed;
+  right: 20px;
+  bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom) + 20px);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-primary);
+  box-shadow: 0 6px 18px rgba(0, 122, 255, 0.35);
+  cursor: pointer;
+}
+
+.fab:active {
+  transform: scale(0.94);
+}
+
+/* ---------- 상세 헤더 ---------- */
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iconBtn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.iconBtn:active {
+  background: var(--color-surface-active);
+}
+
+.detailTitleWrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detailTitle {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--color-text);
+  letter-spacing: -0.4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailMeta {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plannerBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plannerBtn {
+  flex: 1;
+  min-width: 96px;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.plannerBtnOn {
+  border-color: transparent;
+  background: rgba(52, 199, 89, 0.14);
+  color: #248a3d;
+}
+
+.plannerBtnAccent {
+  border-color: transparent;
+  background: var(--color-accent-bg);
+  color: #a8641c;
+}
+
+/* 내 뷰 / 와이프 뷰 전환 */
+.viewToggle {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-secondary);
+}
+
+.viewToggle button {
+  flex: 1;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.viewToggleActive {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.wifeBanner {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: rgba(88, 86, 214, 0.10);
+  color: #4a3fb8;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.notice,
+.noticeAccent {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.notice {
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+}
+
+.noticeAccent {
+  background: var(--color-accent-bg);
+  color: #a8641c;
+}
+
+/* ---------- 섹션 탭 ---------- */
+
+.sectionTabs {
+  position: relative;
+  display: flex;
+  padding: 3px;
+  background: var(--color-bg-secondary);
+  border-radius: 10px;
+}
+
+.sectionTab {
+  flex: 1;
+  min-height: 36px;
+  padding: 8px 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.sectionTabActive {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------- 견적/조합 ---------- */
+
+.budgetRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--color-bg-secondary);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.budgetRow strong {
+  font-size: 15px;
+  color: var(--color-text);
+}
+
+.scenario {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.scenarioPreferred {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary-glow), var(--shadow-sm);
+}
+
+.scenarioHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.scenarioTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.preferredTag {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.scenarioTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scenarioTotalWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.scenarioTotal {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--color-text);
+  letter-spacing: -0.5px;
+}
+
+.shownPrice {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #a8641c;
+}
+
+.scenarioMemo {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.scenarioOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-secondary);
+  font-size: 12px;
+  color: var(--color-text);
+  max-width: 100%;
+}
+
+.chip em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+/* ---------- 조합 계산기 ---------- */
+
+.calcSummary {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: var(--color-text);
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+
+.calcSummaryLabel {
+  font-size: 11.5px;
+  opacity: 0.65;
+  font-weight: 600;
+}
+
+.calcTotal {
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+}
+
+.calcSummary .shownPrice {
+  color: var(--color-accent-soft);
+}
+
+.calcRange {
+  margin-top: 2px;
+  font-size: 11.5px;
+  opacity: 0.6;
+}
+
+.calcSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.calcSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text);
+  padding-top: 4px;
+}
+
+.calcSectionTitle span {
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-secondary);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.calcList {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.calcItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.calcItemActive {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+
+.calcRadio {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface);
+}
+
+.calcItemActive .calcRadio {
+  border-color: var(--color-primary);
+  border-width: 5px;
+}
+
+.calcItemTitle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.35;
+}
+
+.calcItemTitle em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+}
+
+.calcItemPrice {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.calcExtra {
+  width: 100%;
+  min-height: 46px;
+  padding: 12px 13px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+}
+
+.calcExtra:focus {
+  border-color: var(--color-primary);
+}
+
+/* ---------- 후보 ---------- */
+
+.optionSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.optionSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+  padding-top: 4px;
+}
+
+.optionSectionTitle span {
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-secondary);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 13px 14px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.optionHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.optionTitleWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.optionTitle {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.optionProvider {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.optionPriceWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.optionPrice {
+  font-size: 15.5px;
+  font-weight: 800;
+  color: var(--color-text);
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+}
+
+.optionPriceNote {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.optionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+/* ---------- 후보 사진 ---------- */
+
+.photoStrip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+  margin: 0 -2px;
+}
+
+.photoStrip::-webkit-scrollbar {
+  display: none;
+}
+
+.photoThumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 116px;
+  height: 84px;
+  border: none;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-bg-secondary);
+  cursor: pointer;
+  padding: 0;
+}
+
+.photoThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photoThumb span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 6px 4px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.72), transparent);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.photoThumb:active {
+  transform: scale(0.97);
+}
+
+.photoOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.92);
+  animation: fadeIn 0.2s ease;
+}
+
+.photoHeader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  color: #fff;
+}
+
+.photoTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.photoCount {
+  font-size: 12.5px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.photoClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.photoFull {
+  max-width: 100%;
+  max-height: 76dvh;
+  object-fit: contain;
+  border-radius: var(--radius);
+}
+
+.photoCaption {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.photoNav {
+  display: flex;
+  gap: 20px;
+}
+
+.photoNav button {
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.photoNav button:disabled {
+  opacity: 0.25;
+}
+
+.prosCons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pros,
+.cons {
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.pros {
+  background: rgba(52, 199, 89, 0.10);
+  color: #1f7a35;
+}
+
+.cons {
+  background: rgba(255, 59, 48, 0.08);
+  color: #b3261e;
+}
+
+.optionMemo {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.optionFooter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.link {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.agentTag {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ---------- 일정표 ---------- */
+
+/* 일정 탭: 안(조합)별 필터 칩 */
+.scenarioChips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.scenarioChips::-webkit-scrollbar {
+  display: none;
+}
+
+.scenarioChip {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.scenarioChipActive {
+  border-color: transparent;
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.daySection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dayTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+  padding-top: 4px;
+}
+
+.dayTitle span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+}
+
+.item {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.itemRail {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 46px;
+}
+
+.itemStep {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.itemTime {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+
+.photoThumbSm {
+  position: relative;
+  flex-shrink: 0;
+  width: 92px;
+  height: 66px;
+  border: none;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-bg-secondary);
+  cursor: pointer;
+  padding: 0;
+}
+
+.photoThumbSm img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photoThumbSm:active {
+  transform: scale(0.97);
+}
+
+.itemBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.itemTitleRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.itemTitle {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.itemCost {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.itemPlace {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+.itemMemo {
+  font-size: 12.5px;
+  color: var(--color-text-tertiary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* ---------- 공통 액션 ---------- */
+
+.rowActions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.rowActions button {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rowActions button:active {
+  background: var(--color-surface-active);
+}
+
+.dangerText {
+  color: var(--color-danger) !important;
+}
+
+.addBtn {
+  min-height: 46px;
+  padding: 13px;
+  border: 1.5px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.addBtn:active {
+  background: var(--color-surface-active);
+}
+
+/* ---------- 시트 ---------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 520px;
+  max-height: 92dvh;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xl);
+  animation: slideUp 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(24px); opacity: 0.6; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (min-width: 768px) {
+  .overlay {
+    align-items: center;
+  }
+
+  .sheet {
+    border-radius: var(--radius-xl);
+  }
+}
+
+.sheetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.sheetHeader h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.sheetClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.sheetBody {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+}
+
+.sheetFooter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--color-border-light);
+}
+
+.sheetDesc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+
+.footerTotal {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.primaryBtn {
+  flex: 1;
+  min-height: 46px;
+  padding: 13px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.dangerBtn {
+  min-height: 46px;
+  padding: 13px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-danger);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ---------- 폼 필드 ---------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.fieldRow {
+  display: flex;
+  gap: 10px;
+}
+
+.fieldLabel {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.fieldHint {
+  font-size: 11.5px;
+  color: var(--color-text-tertiary);
+}
+
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.field textarea {
+  min-height: 64px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  border-color: var(--color-primary);
+}
+
+.catPicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.catBtn {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.catBtnActive {
+  border-color: transparent;
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.pickList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.pickItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pickItemActive {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+
+.pickCheck {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--color-surface);
+}
+
+.pickItemActive .pickCheck {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.pickTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pickPrice {
+  flex-shrink: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+/* ---------- 할인 시트 ---------- */
+
+.discountValue {
+  text-align: center;
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--color-accent);
+  letter-spacing: -1px;
+}
+
+.range {
+  width: 100%;
+  accent-color: var(--color-accent);
+}
+
+.discountPresets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.presetBtn {
+  flex: 1;
+  min-width: 56px;
+  min-height: 38px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.presetBtnActive {
+  border-color: transparent;
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.discountPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 13px 14px;
+  border-radius: var(--radius);
+  background: var(--color-bg-secondary);
+}
+
+.discountPreview > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.discountPreview strong {
+  font-size: 15px;
+  color: var(--color-text);
+}
+
+.discountPreviewShown strong {
+  color: var(--color-accent);
+}
+
+/* ---------- 리서치 요청 ---------- */
+
+.requestList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.request {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.requestDone {
+  opacity: 0.6;
+}
+
+.requestHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.requestStatus {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.requestDate {
+  font-size: 11.5px;
+  color: var(--color-text-tertiary);
+}
+
+.requestContent {
+  font-size: 13px;
+  color: var(--color-text);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.requestResult {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* ============================================================
+   Responsive — Galaxy Fold 접힌 상태(280px)까지
+   ============================================================ */
+
+@media (max-width: 360px) {
+  .list,
+  .detail {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .cardTitle { font-size: 16px; }
+  .cardTotal strong { font-size: 18px; }
+  .scenarioTotal { font-size: 17px; }
+}
+
+@media (max-width: 320px) {
+  .detailTitle { font-size: 17px; }
+  .plannerBtn { font-size: 12px; min-width: 84px; padding: 9px 8px; }
+  .sectionTab { font-size: 12px; }
+
+  .scenarioHead,
+  .optionHead {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .scenarioTotalWrap,
+  .optionPriceWrap {
+    align-items: flex-start;
+  }
+
+  .fieldRow {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .catBtn { font-size: 12px; padding: 8px 10px; }
+  .itemTime { width: 40px; font-size: 12px; }
+  .sheetBody { padding: 14px; }
+}

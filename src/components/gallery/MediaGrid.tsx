@@ -13,11 +13,14 @@ interface Props {
   columns?: number;
   selectMode?: boolean;
   selectedIds?: Set<number>;
+  onSelectDay?: (ids: number[], select: boolean) => void;
   onLongPress?: (firstId: number) => void;
   onLikeToggle?: (id: number, liked: boolean) => void;
   isAdmin?: boolean;
   babyBirth?: string | null;
   enableEvents?: boolean;
+  sectionPrefix?: string;   // 월 섹션 id 접두사. 탭(스코프)별로 달라 중복 id 방지
+  markShared?: boolean;     // 개인탭에서 이미 공유된 사진에 "공유됨" 배지
 }
 
 function formatDateHeader(dateStr: string): string {
@@ -42,7 +45,7 @@ interface DateGroup {
   items: { item: MediaItem; globalIndex: number }[];
 }
 
-export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sort, columns, selectMode, selectedIds, onLongPress, onLikeToggle, isAdmin, babyBirth, enableEvents }: Props) {
+export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sort, columns, selectMode, selectedIds, onSelectDay, onLongPress, onLikeToggle, isAdmin, babyBirth, enableEvents, sectionPrefix = 'month-', markShared }: Props) {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   // 갤러리 이벤트 자막
@@ -107,6 +110,10 @@ export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sor
 
   const gridStyle = columns ? { '--grid-cols': columns } as React.CSSProperties : undefined;
 
+  // srcset이 올바른 해상도를 고르려면 셀이 화면에서 차지하는 실제 너비를 알려줘야 한다.
+  // 640px 이상에선 CSS가 !important로 열 수를 고정하므로 그 값을, 그 아래에선 columns를 쓴다.
+  const cellSizes = `(min-width:1400px) 20vw, (min-width:1024px) 25vw, (min-width:640px) 33vw, ${Math.round(100 / (columns || 2))}vw`;
+
   const renderCard = (item: MediaItem, globalIndex: number, animIndex: number) => (
     <MediaCard
       key={item.id}
@@ -117,6 +124,8 @@ export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sor
       selected={selectedIds?.has(item.id)}
       onLongPress={onLongPress ? () => onLongPress(item.id) : undefined}
       onLikeToggle={onLikeToggle}
+      sizes={cellSizes}
+      markShared={markShared}
     />
   );
 
@@ -137,7 +146,8 @@ export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sor
       {groups.map((group) => {
         const monthId = monthFirstKeys.get(group.dateKey);
         return (
-          <section key={group.dateKey} className={styles.section} id={monthId ? `month-${monthId}` : undefined}>
+          <section key={group.dateKey} className={styles.section} id={monthId ? `${sectionPrefix}${monthId}` : undefined}>
+            <span id={`${sectionPrefix}${group.dateKey}`} aria-hidden="true" style={{ display: 'block', height: 0 }} />
             <div
               className={styles.dateHeader}
               onPointerDown={isAdmin && enableEvents ? () => startPress(group.dateKey) : undefined}
@@ -149,6 +159,22 @@ export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, sor
               <span className={styles.dateLabel}>{group.label}</span>
               <span className={styles.dateCount}>{group.items.length}장</span>
               {(() => { const d = daysSinceBirth(group.dateKey, babyBirth); return d ? <span className={styles.seolBadge}>👶 {d}일</span> : null; })()}
+              {selectMode && (() => {
+                const ids = group.items.map(({ item }) => item.id);
+                const anySel = ids.some(id => selectedIds?.has(id));
+                if (!anySel) return null;
+                const allSel = ids.every(id => selectedIds?.has(id));
+                return (
+                  <button
+                    type="button"
+                    className={styles.daySelectBtn}
+                    onPointerDown={e => e.stopPropagation()}
+                    onClick={e => { e.stopPropagation(); onSelectDay?.(ids, !allSel); }}
+                  >
+                    {allSel ? '이 날짜 해제' : '이 날짜 전체'}
+                  </button>
+                );
+              })()}
               <span className={styles.dateLine} />
             </div>
             {enableEvents && (() => {

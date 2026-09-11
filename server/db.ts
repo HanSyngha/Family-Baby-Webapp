@@ -48,6 +48,13 @@ db.exec(`
     createdAt TEXT DEFAULT (datetime('now', '+9 hours'))
   );
 
+  -- 삭제한 사진의 해시 묘비(tombstone). 폰 자동백업이 삭제분을 다시 올리는 걸 막는다.
+  -- check-duplicate에서 이 해시면 duplicate로 응답(폰은 스킵). 웹 수동 업로드는 무시하고 진행.
+  CREATE TABLE IF NOT EXISTS deleted_hashes (
+    hash TEXT PRIMARY KEY,
+    deletedAt TEXT DEFAULT (datetime('now', '+9 hours'))
+  );
+
   CREATE TABLE IF NOT EXISTS views (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     mediaId INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
@@ -489,6 +496,9 @@ try { db.exec("UPDATE users SET birthDate = '1992-12-10' WHERE name = '황하람
 // 마이그레이션: users에 lastActiveAt 컬럼 추가 (자동 수면용)
 try { db.exec('ALTER TABLE users ADD COLUMN lastActiveAt TEXT'); } catch {}
 
+// 마이그레이션: 카카오 프사 http URL → https 승격 (HTTPS 사이트 mixed-content 차단 방지)
+try { db.exec("UPDATE users SET profileImage = 'https://' || substr(profileImage, 8) WHERE profileImage LIKE 'http://%'"); } catch {}
+
 // 마이그레이션: sleeps에 isAutoSleep 컬럼 추가
 try { db.exec('ALTER TABLE sleeps ADD COLUMN isAutoSleep INTEGER DEFAULT 0'); } catch {}
 
@@ -588,6 +598,130 @@ try {
 
 // 설이(한설) 생일 시드 — 프론트 하드코딩 제거 후 DB 단일 소스로
 try { db.exec("UPDATE babies SET birthDate = '2026-02-19' WHERE name = '한설' AND birthDate IS NULL"); } catch {}
+
+// ============================================================
+// 여행 계획(견적) — 가기 전 리서치/견적 공간. 갤러리 '여행 앨범'(다녀온 사진)과 별개.
+// 작성은 플래너(한승하) + 에이전트 토큰만. status='draft'면 본인만, 'published'라야 다른 master도 본다.
+// displayDiscountPct: 다른 사람에게 보일 때만 서버가 금액에 적용(실가격은 DB에만, 응답에서 제외).
+// ============================================================
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS trip_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ownerId INTEGER NOT NULL REFERENCES users(id),
+    title TEXT NOT NULL,
+    destination TEXT DEFAULT '',
+    startDate TEXT,
+    endDate TEXT,
+    adults INTEGER DEFAULT 2,
+    children INTEGER DEFAULT 1,
+    budgetKrw INTEGER,
+    memo TEXT DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'draft',
+    displayDiscountPct REAL NOT NULL DEFAULT 0,
+    albumId INTEGER REFERENCES albums(id) ON DELETE SET NULL,
+    sortOrder INTEGER DEFAULT 0,
+    publishedAt TEXT,
+    createdAt TEXT DEFAULT (datetime('now', '+9 hours')),
+    updatedAt TEXT DEFAULT (datetime('now', '+9 hours'))
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_trip_plans_status ON trip_plans(status, sortOrder)');
+
+  // 후보: 항공/숙소/교통/액티비티/식사/기타
+  db.exec(`CREATE TABLE IF NOT EXISTS trip_plan_options (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    planId INTEGER NOT NULL REFERENCES trip_plans(id) ON DELETE CASCADE,
+    category TEXT NOT NULL DEFAULT 'etc',
+    title TEXT NOT NULL,
+    provider TEXT DEFAULT '',
+    priceKrw INTEGER,
+    priceNote TEXT DEFAULT '',
+    startAt TEXT,
+    endAt TEXT,
+    durationMin INTEGER,
+    location TEXT DEFAULT '',
+    url TEXT DEFAULT '',
+    rating REAL,
+    pros TEXT DEFAULT '',
+    cons TEXT DEFAULT '',
+    memo TEXT DEFAULT '',
+    createdBy TEXT NOT NULL DEFAULT 'manual',
+    sortOrder INTEGER DEFAULT 0,
+    createdAt TEXT DEFAULT (datetime('now', '+9 hours')),
+    updatedAt TEXT DEFAULT (datetime('now', '+9 hours'))
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_trip_plan_options_plan ON trip_plan_options(planId, category, sortOrder)');
+
+  // 조합(시나리오): 후보를 골라 묶은 견적안. 총액은 서버가 합산.
+  db.exec(`CREATE TABLE IF NOT EXISTS trip_plan_scenarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    planId INTEGER NOT NULL REFERENCES trip_plans(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    memo TEXT DEFAULT '',
+    extraKrw INTEGER NOT NULL DEFAULT 0,
+    isPreferred INTEGER NOT NULL DEFAULT 0,
+    sortOrder INTEGER DEFAULT 0,
+    createdAt TEXT DEFAULT (datetime('now', '+9 hours'))
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_trip_plan_scenarios_plan ON trip_plan_scenarios(planId, sortOrder)');
+
+  db.exec(`CREATE TABLE IF NOT EXISTS trip_plan_scenario_options (
+    scenarioId INTEGER NOT NULL REFERENCES trip_plan_scenarios(id) ON DELETE CASCADE,
+    optionId INTEGER NOT NULL REFERENCES trip_plan_options(id) ON DELETE CASCADE,
+    qty INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (scenarioId, optionId)
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_trip_scenario_options_opt ON trip_plan_scenario_options(optionId)');
+
+  // 일자별 일정표. scenarioId가 null이면 조합과 무관한 공통 일정.
+  db.exec(`CREATE TABLE IF NOT EXISTS trip_plan_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    planId INTEGER NOT NULL REFERENCES trip_plans(id) ON DELETE CASCADE,
+    scenarioId INTEGER REFERENCES trip_plan_scenarios(id) ON DELETE CASCADE,
+    optionId INTEGER REFERENCES trip_plan_options(id) ON DELETE SET NULL,
+    dayIndex INTEGER NOT NULL DEFAULT 1,
+    date TEXT,
+    startTime TEXT,
+    endTime TEXT,
+    title TEXT NOT NULL,
+    place TEXT DEFAULT '',
+    costKrw INTEGER,
+    memo TEXT DEFAULT '',
+    sortOrder INTEGER DEFAULT 0,
+    createdAt TEXT DEFAULT (datetime('now', '+9 hours'))
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_trip_plan_items_plan ON trip_plan_items(planId, dayIndex, sortOrder)');
+
+  // 지도(약도)에 점을 찍기 위한 좌표. 외부 지도 타일 없이 SVG로 그리므로 lat/lng만 있으면 된다.
+  try { db.exec('ALTER TABLE trip_plan_options ADD COLUMN lat REAL'); } catch {}
+  try { db.exec('ALTER TABLE trip_plan_options ADD COLUMN lng REAL'); } catch {}
+  try { db.exec('ALTER TABLE trip_plan_items ADD COLUMN lat REAL'); } catch {}
+  try { db.exec('ALTER TABLE trip_plan_items ADD COLUMN lng REAL'); } catch {}
+
+  // 후보 사진 (숙소 수영장/객실 등). 원본 URL이 아니라 NAS에 받아 저장한다
+  // — 외부 CDN은 만료·핫링크 차단이 잦고, 앱에서 mixed-content로 막힐 수 있다.
+  db.exec(`CREATE TABLE IF NOT EXISTS trip_plan_option_photos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    optionId INTEGER NOT NULL REFERENCES trip_plan_options(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL,
+    caption TEXT DEFAULT '',
+    sortOrder INTEGER DEFAULT 0,
+    createdAt TEXT DEFAULT (datetime('now', '+9 hours'))
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_trip_photos_option ON trip_plan_option_photos(optionId, sortOrder)');
+
+  // 리서치 요청 채널: 사용자가 남기면 에이전트(Claude)가 읽고 채운 뒤 done 처리.
+  db.exec(`CREATE TABLE IF NOT EXISTS trip_plan_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    planId INTEGER NOT NULL REFERENCES trip_plans(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open',
+    resultNote TEXT DEFAULT '',
+    createdBy INTEGER REFERENCES users(id),
+    createdAt TEXT DEFAULT (datetime('now', '+9 hours')),
+    resolvedAt TEXT
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_trip_plan_requests_plan ON trip_plan_requests(planId, status)');
+} catch (e) { console.error('[DB] trip_plans schema error:', e); }
 
 // 기존 파일들의 해시를 채워넣기 (quick hash: head+tail+size)
 import crypto from 'crypto';
@@ -709,25 +843,61 @@ function syncFromPeanut() {
       return ourUser.id;
     }
 
+    const existingByHash = db.prepare(`
+      SELECT id, visibility, uploaderId
+      FROM media
+      WHERE hash = ?
+      ORDER BY CASE visibility WHEN 'shared' THEN 0 ELSE 1 END, id
+    `);
+    const promote = db.prepare("UPDATE media SET visibility = 'shared', ownerId = NULL WHERE id = ?");
     const insert = db.prepare(`
-      INSERT INTO media (uploaderId, filename, originalName, mimeType, type, size, width, height, duration, hash, createdAt, source)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'peanut')
+      INSERT INTO media (uploaderId, filename, originalName, mimeType, type, size, width, height, duration, hash, createdAt, uploadedAt, takenAt, source, visibility, ownerId)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'peanut', 'shared', NULL)
     `);
 
     let synced = 0;
+    let promoted = 0;
+    let skippedShared = 0;
+    let missingFiles = 0;
     let maxId = lastId;
 
     for (const m of newMedia) {
       maxId = m.id;
 
-      // hash 중복 체크
-      if (m.hash && ourHashes.has(m.hash)) continue;
+      let ourUserId: number | null | undefined;
+      const getOurUserId = () => {
+        if (ourUserId === undefined) ourUserId = mapUser(m.uploaderId);
+        return ourUserId;
+      };
+
+      // 같은 파일이 이미 개인공간에만 있으면, 구앱 업로드 의도대로 공유로 승격한다.
+      if (m.hash && ourHashes.has(m.hash)) {
+        const existing = existingByHash.all(m.hash) as { id: number; visibility: string; uploaderId: number }[];
+        if (existing.some(row => row.visibility === 'shared')) {
+          skippedShared++;
+          continue;
+        }
+
+        if (existing.length > 0) {
+          const mappedUserId = getOurUserId();
+          const target = (mappedUserId ? existing.find(row => row.uploaderId === mappedUserId) : undefined) || existing[0];
+          promote.run(target.id);
+          promoted++;
+          continue;
+        }
+      }
+
+      const peanutOriginal = path.join(PEANUT_DATA_DIR, 'originals', m.filename);
+      if (!fs.existsSync(peanutOriginal)) {
+        missingFiles++;
+        continue;
+      }
 
       // user 매핑
-      const ourUserId = mapUser(m.uploaderId);
+      ourUserId = getOurUserId();
       if (!ourUserId) continue;
 
-      insert.run(ourUserId, m.filename, m.originalName, m.mimeType, m.type, m.size, m.width, m.height, m.duration, m.hash, m.createdAt);
+      insert.run(ourUserId, m.filename, m.originalName, m.mimeType, m.type, m.size, m.width, m.height, m.duration, m.hash, m.createdAt, m.uploadedAt);
       if (m.hash) ourHashes.add(m.hash);
       synced++;
     }
@@ -735,7 +905,9 @@ function syncFromPeanut() {
     // 커서 갱신
     db.prepare("INSERT OR REPLACE INTO sync_state (key, value) VALUES ('peanut_last_id', ?)").run(String(maxId));
 
-    if (synced > 0) console.log(`[Sync] Synced ${synced} media from peanut (up to id ${maxId})`);
+    if (synced > 0 || promoted > 0 || missingFiles > 0) {
+      console.log(`[Sync] Peanut→family up to id ${maxId}: inserted=${synced}, promoted=${promoted}, alreadyShared=${skippedShared}, missingFiles=${missingFiles}`);
+    }
   } catch (err) {
     console.error('[Sync] Error:', err);
   }

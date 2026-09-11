@@ -124,7 +124,7 @@
 /* 타임라인 레일 — 장소를 시간순 칩으로, 상단 고정 */
 .timelineRail {
   position: sticky;
-  top: 0;
+  top: env(safe-area-inset-top);
   z-index: 6;
   display: flex;
   gap: 8px;

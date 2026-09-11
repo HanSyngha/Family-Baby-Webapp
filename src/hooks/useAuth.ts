@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api, type User } from '../api';
+import { clearBackupAuth, syncBackupAuth } from '../lib/backup';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -7,12 +8,19 @@ export function useAuth() {
 
   useEffect(() => {
     api.getMe()
-      .then(setUser)
-      .catch(() => setUser(null))
+      .then((u) => {
+        setUser(u);
+        syncBackupAuth(u);
+      })
+      .catch((err) => {
+        setUser(null);
+        if (err instanceof Error && err.message === 'Unauthorized') clearBackupAuth();
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const logout = useCallback(async () => {
+    await clearBackupAuth();
     await api.logout();
     setUser(null);
   }, []);
