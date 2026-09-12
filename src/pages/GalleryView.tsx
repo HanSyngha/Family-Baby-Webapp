@@ -534,7 +534,7 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
       {/* Select bar */}
       {selectMode && (
         <div className={styles.selectBar}>
-          <span className={styles.selectCount}>{selectedIds.size}개 선택됨</span>
+          <span className={styles.selectCount}>{selectedIds.size}개<span className={styles.selectCountWord}> 선택됨</span></span>
           <div className={styles.selectActions}>
             <button className={styles.playBtn} onClick={playSelected} disabled={selectedIds.size === 0} title="선택 항목 반복재생">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>

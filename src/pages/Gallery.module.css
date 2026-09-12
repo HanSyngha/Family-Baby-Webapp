@@ -662,16 +662,31 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Fold 접힘(280px)에서만 글자를 숨기고 아이콘만 남긴다. 주 동작은 글자를 지킨다.
-   ⚠️ 기준을 360px로 잡으면 안 된다 — 갤럭시 S가 정확히 360px이고, 거기서 글자가
-   사라지면 '뭐가 뭔지 모르겠다'는 원래 문제로 돌아간다. 그보다 좁을 때만 접는다.
-   (넘치면 .selectActions가 가로 스크롤로 흘려보낸다) */
-@media (max-width: 330px) {
+/* 좁은 화면에서 자리를 만드는 순서 — 무엇을 먼저 버릴지가 곧 우선순위다.
+   ⚠️ 라벨을 한꺼번에 숨기면 안 된다. 갤럭시 S가 정확히 360px이라 거기서 글자가
+   전부 사라지면 '뭐가 뭔지 모르겠다'는 원래 문제로 돌아간다.
+   '공유 범위'(주 동작)와 '삭제'(파괴적)는 끝까지 글자를 지킨다 — 특히 삭제는
+   무슨 버튼인지 모른 채 누르면 안 되는 버튼이다. */
+
+/* 1순위: '선택됨' 같은 군더더기 글자부터 접는다 */
+@media (max-width: 430px) {
+  .selectCountWord { display: none; }
+}
+
+/* 2순위: 보조 동작(재생·저장·내보내기)은 아이콘만 남긴다 */
+@media (max-width: 400px) {
   .selectBar { padding: 10px 12px; gap: 8px; }
   .playBtn span,
   .downloadBtn span,
-  .deleteSelBtn span { display: none; }
+  .shareBtn span { display: none; }
   .playBtn,
   .downloadBtn,
-  .deleteSelBtn { padding: 8px 12px; }
+  .shareBtn { padding: 8px 11px; }
+}
+
+/* 3순위: Fold 접힘(280px)에선 삭제도 아이콘만. 주 동작만 글자가 남는다 */
+@media (max-width: 320px) {
+  .deleteSelBtn span { display: none; }
+  .deleteSelBtn { padding: 8px 11px; }
+  .scopeBtn { padding: 8px 13px; }
 }
