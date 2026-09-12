@@ -20,6 +20,7 @@ import { registerLlmRoutes } from './routes/llm.js';
 import { registerBabyRoutes } from './routes/baby.js';
 import { registerHomeRoutes } from './routes/home.js';
 import { registerAppRoutes } from './routes/app.js';
+import { registerBackupRoutes } from './routes/backup.js';
 import { startHealthCheck } from './llm-health.js';
 import { startAutoSleepCheck } from './auto-sleep.js';
 
@@ -61,6 +62,7 @@ registerLlmRoutes(app);
 registerBabyRoutes(app);
 registerHomeRoutes(app);
 registerAppRoutes(app);
+registerBackupRoutes(app);
 
 // SPA 정적 파일 서빙 (production)
 const publicDir = path.resolve('dist/public');

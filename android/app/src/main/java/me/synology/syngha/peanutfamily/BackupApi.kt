@@ -56,6 +56,30 @@ class BackupApi(private val baseUrl: String, private val resolver: ContentResolv
         }
     }
 
+    /**
+     * 백업 진행률 보고.
+     *
+     * 폰에만 있는 숫자(로컬 총 개수)를 서버가 갖고 있어야 웹 홈에서도 진행률을 볼 수 있다.
+     * 실패해도 백업 자체와는 무관하므로 조용히 무시한다.
+     */
+    fun reportProgress(
+        accessToken: String,
+        photoTotal: Int, photoDone: Int,
+        videoTotal: Int, videoDone: Int,
+        deviceName: String
+    ): Boolean {
+        return try {
+            val json = JSONObject()
+                .put("photoTotal", photoTotal).put("photoDone", photoDone)
+                .put("videoTotal", videoTotal).put("videoDone", videoDone)
+                .put("deviceName", deviceName)
+                .toString().toRequestBody(jsonType)
+            val req = Request.Builder().url("$baseUrl/api/backup/progress")
+                .header("Authorization", "Bearer $accessToken").post(json).build()
+            client.newCall(req).execute().use { it.isSuccessful }
+        } catch (e: Exception) { false }
+    }
+
     /** 개인공간(visibility=private)으로 업로드. HTTP 상태코드 반환(401=토큰만료). */
     fun upload(accessToken: String, uri: Uri, displayName: String, mimeType: String): Int {
         val fileBody = object : RequestBody() {

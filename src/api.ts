@@ -701,6 +701,12 @@ export const api = {
   promoteToShared: (mediaIds: number[], albumId?: number | null) => request<{ ok: boolean; promoted: number; addedToAlbum: number }>('/media/promote-to-shared', { method: 'POST', body: JSON.stringify({ mediaIds, albumId }) }),
   unshare: (mediaIds: number[]) => request<{ ok: boolean; unshared: number }>('/media/unshare', { method: 'POST', body: JSON.stringify({ mediaIds }) }),
   // Peanut World(외부 공개) 토글. 땅땅&콩콩에 이미 올라간 사진만 공개할 수 있다(서버가 강제).
+  // 폰 백업 진행률(안드로이드 앱이 보고한 값). 앱이 한 번도 안 돌았으면 reported:false.
+  getBackupProgress: () => request<{
+    reported: boolean; deviceName?: string; updatedAt?: string;
+    photoTotal?: number; photoDone?: number; videoTotal?: number; videoDone?: number;
+  }>('/backup/progress'),
+
   externalShare: (mediaIds: number[], on: boolean) =>
     request<{ ok: boolean; changed: number; skipped: number }>('/media/external-share', { method: 'POST', body: JSON.stringify({ mediaIds, on }) }),
   copyToPeanut: (ids: number[]) =>

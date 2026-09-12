@@ -85,6 +85,56 @@ object MediaScanner {
         return items
     }
 
+    /** 사진/영상 각각의 '폰에 있는 총 개수'와 '서버에 있다고 확인된 개수'. */
+    data class Progress(val photos: Pair<Int, Int>, val videos: Pair<Int, Int>)
+
+    /**
+     * 진행률 계산.
+     *
+     * 분모는 '지금 이 폰의 선택 폴더에 있는 항목 수', 분자는 그중 VerifiedStore에 기록된 것.
+     * MediaStore를 훑으며 교집합을 세므로, 폰에서 지운 사진이 분자에만 남아 100%를 넘기는 일이 없다.
+     * 파일을 읽지 않고 id만 보기 때문에 수만 장이어도 순식간에 끝난다.
+     */
+    fun progress(
+        resolver: ContentResolver,
+        folders: Set<String>,
+        includeVideos: Boolean,
+        verifiedPhotos: Set<Long>,
+        verifiedVideos: Set<Long>
+    ): Progress {
+        val photos = countPair(resolver, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, folders, verifiedPhotos)
+        val videos = if (includeVideos)
+            countPair(resolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, folders, verifiedVideos)
+        else 0 to 0
+        return Progress(photos, videos)
+    }
+
+    private fun countPair(
+        resolver: ContentResolver, collection: Uri, folders: Set<String>, verified: Set<Long>
+    ): Pair<Int, Int> {
+        var total = 0
+        var done = 0
+        val sel = StringBuilder("${MediaStore.MediaColumns.SIZE} > 0")
+        val args = ArrayList<String>()
+        if (folders.isNotEmpty()) {
+            sel.append(" AND $BUCKET IN (${folders.joinToString(",") { "?" }})")
+            args.addAll(folders)
+        }
+        try {
+            resolver.query(
+                collection, arrayOf(MediaStore.MediaColumns._ID),
+                sel.toString(), args.toTypedArray(), null
+            )?.use { c ->
+                val idCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+                while (c.moveToNext()) {
+                    total++
+                    if (verified.contains(c.getLong(idCol))) done++
+                }
+            }
+        } catch (e: Exception) { /* 권한 없으면 0 / 0 */ }
+        return total to done
+    }
+
     /** 설정 화면용 폴더 목록(이름 + 항목 수), 많은 순. */
     fun listFolders(resolver: ContentResolver, includeVideos: Boolean): List<Pair<String, Int>> {
         val counts = HashMap<String, Int>()

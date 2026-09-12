@@ -116,12 +116,16 @@ class PeanutBackupPlugin : Plugin() {
         if (arr != null) for (i in 0 until arr.length()) arr.optString(i)?.let { if (it.isNotEmpty()) folders.add(it) }
         val wasExisting = BackupPrefs.backupExisting(context)
         val newExisting = call.getBoolean("backupExisting", false) ?: false
+        // 대조 기준(어느 폴더를, 영상 포함 여부)이 바뀌면 지금까지의 스윕 진행은 의미가 없다
+        val prevFolders = BackupPrefs.folders(context)
+        val prevIncludeVideos = BackupPrefs.includeVideos(context)
+        val newIncludeVideos = call.getBoolean("includeVideos", true) ?: true
         BackupPrefs.setConfig(
             context,
             enabled = call.getBoolean("enabled", false) ?: false,
             wifiOnly = call.getBoolean("wifiOnly", true) ?: true,
             chargingOnly = call.getBoolean("chargingOnly", false) ?: false,
-            includeVideos = call.getBoolean("includeVideos", true) ?: true,
+            includeVideos = newIncludeVideos,
             batteryNotLow = call.getBoolean("batteryNotLow", true) ?: true,
             backupExisting = newExisting,
             folders = folders,
@@ -130,8 +134,32 @@ class PeanutBackupPlugin : Plugin() {
         )
         // '기존 사진 백업'을 새로 켜면 → 커서를 0으로 리셋해 처음부터 다시 스캔(이미 올린 건 해시로 스킵)
         if (newExisting && !wasExisting) BackupPrefs.setCursor(context, 0L)
+        if (prevFolders != folders || prevIncludeVideos != newIncludeVideos) BackupPrefs.resetSweep(context)
         BackupScheduler.schedule(context)
         call.resolve()
+    }
+
+    /**
+     * 백업 진행률. 사진/영상 각각 '폰에 있는 수'와 '서버에 있다고 확인된 수'.
+     * 파일을 읽지 않고 MediaStore id와 기록만 대조하므로 즉시 끝난다.
+     */
+    @PluginMethod
+    fun getBackupProgress(call: PluginCall) {
+        val p = MediaScanner.progress(
+            context.contentResolver,
+            BackupPrefs.folders(context),
+            BackupPrefs.includeVideos(context),
+            VerifiedStore.idsOf(context, false),
+            VerifiedStore.idsOf(context, true)
+        )
+        val ret = JSObject()
+        ret.put("photoTotal", p.photos.first)
+        ret.put("photoDone", p.photos.second)
+        ret.put("videoTotal", p.videos.first)
+        ret.put("videoDone", p.videos.second)
+        // 최초 전체 대조가 아직 안 끝났으면 숫자가 실제보다 낮게 보일 수 있다는 걸 알려준다
+        ret.put("sweepDone", BackupPrefs.sweepDone(context))
+        call.resolve(ret)
     }
 
     @PluginMethod

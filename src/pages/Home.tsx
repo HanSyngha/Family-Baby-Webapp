@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api, type User, type HomeSummary } from '../api';
 import styles from './Home.module.css';
 import Icon from '../components/ui/Icon';
+import BackupProgress from '../components/home/BackupProgress';
 
 interface Props {
   user: User;
@@ -146,6 +147,9 @@ export default function Home({ user }: Props) {
           }
         </div>
       </div>
+
+      {/* 원본 백업 진행률 — 맨 위. '내 사진이 진짜 서버에 있나'가 가장 먼저 나와야 할 답이다. */}
+      <BackupProgress />
 
       {/* Baby Summaries (youngest first, always on top) */}
       {babySummaries.map((bs) => (

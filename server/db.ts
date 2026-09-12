@@ -563,6 +563,27 @@ try { db.exec('CREATE INDEX IF NOT EXISTS idx_media_vis_owner ON media(visibilit
 try { db.exec('ALTER TABLE media ADD COLUMN externalShared INTEGER DEFAULT 0'); } catch {}
 try { db.exec('ALTER TABLE media ADD COLUMN externalSharedAt TEXT'); } catch {}
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_media_external ON media(externalShared, createdAt DESC)'); } catch {}
+
+// ============================================================
+// 폰 백업 진행률
+//
+// '폰에 사진이 몇 장 있는가'는 서버가 알 수 없다 — 안드로이드 앱만 아는 숫자다.
+// 앱이 백업을 돌 때마다 이 표에 보고해두면, 웹에서도(앱을 안 켜도) 진행률을 볼 수 있다.
+// done = 해시 대조로 '서버에 원본이 있다'가 확인된 개수.
+// 기기별로 한 줄(같은 사람이 폰을 두 대 쓸 수 있으므로).
+// ============================================================
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS backup_progress (
+    userId     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    deviceName TEXT NOT NULL,
+    photoTotal INTEGER NOT NULL DEFAULT 0,
+    photoDone  INTEGER NOT NULL DEFAULT 0,
+    videoTotal INTEGER NOT NULL DEFAULT 0,
+    videoDone  INTEGER NOT NULL DEFAULT 0,
+    updatedAt  TEXT DEFAULT (datetime('now', '+9 hours')),
+    PRIMARY KEY (userId, deviceName)
+  )`);
+} catch (e) { console.error('[DB] backup_progress schema error:', e); }
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_media_takenat ON media(takenAt)'); } catch {}
 
 // 앨범: 한설(공유 전체, 앨범 미사용) / 여행(kind='trip')

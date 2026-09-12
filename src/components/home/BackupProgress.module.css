@@ -1,0 +1,127 @@
+.card {
+  padding: 16px 18px 14px;
+  margin-bottom: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  animation: cardIn var(--dur-base) var(--ease-out) both;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-text);
+  letter-spacing: -0.01em;
+}
+
+.titleIcon { color: var(--color-text-secondary); }
+
+.badgeDone,
+.badgeChecking {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.badgeDone { background: rgba(52, 199, 89, 0.14); color: #1E8E4A; }
+.badgeChecking { background: var(--color-accent-bg); color: var(--color-accent); }
+
+/* ── 막대 한 줄 ───────────────────────────────────────────────────── */
+
+.row + .row { margin-top: 13px; }
+
+.rowHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.rowLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.rowLabel svg { color: var(--color-text-tertiary); }
+
+.rowCount {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  /* 숫자가 차오를 때 폭이 흔들리지 않게 */
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.slash { color: var(--color-text-tertiary); }
+
+.pct {
+  margin-left: 7px;
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--color-bg-warm);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 999px;
+  /* 색과 너비가 같이 움직여야 '차오른다'는 느낌이 난다 */
+  transition: width var(--dur-slow) var(--ease-out), background var(--dur-slow) var(--ease-out);
+}
+
+/* 100%일 때만 은은하게 흐르는 광택 — 다 됐다는 걸 한 번 더 말해준다 */
+.fillComplete {
+  background-image: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.45) 50%, transparent 65%);
+  background-size: 220% 100%;
+  animation: sheen 2.6s var(--ease-out) infinite;
+}
+
+@keyframes sheen {
+  from { background-position: 140% 0; }
+  to   { background-position: -40% 0; }
+}
+
+.note {
+  margin-top: 11px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--color-text-tertiary);
+  word-break: keep-all;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fillComplete { animation: none; background-image: none; }
+}
+
+@media (max-width: 340px) {
+  .card { padding: 14px 14px 12px; }
+  .rowCount { font-size: 11.5px; }
+  .pct { font-size: 13px; margin-left: 5px; }
+}

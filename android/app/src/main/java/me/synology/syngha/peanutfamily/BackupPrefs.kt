@@ -82,6 +82,19 @@ object BackupPrefs {
     fun cursor(ctx: Context) = cfg(ctx).getLong("cursor", 0L)
     fun setCursor(ctx: Context, v: Long) = cfg(ctx).edit().putLong("cursor", v).apply()
 
+    // ---- 최초 전체 대조 스윕 ----
+    // 백업 커서는 '어디까지 올렸나'를 가리킬 뿐이라, 앱 설치 전부터 있던 사진이 서버에 있는지는
+    // 모른다. 그래서 별도 커서로 전체를 한 번 훑으며 해시 대조 결과를 VerifiedStore에 채운다.
+    // 시간이 오래 걸리므로 한 번에 다 하지 않고 회차마다 시간 예산만큼만 진행한다.
+    fun sweepCursor(ctx: Context) = cfg(ctx).getLong("sweepCursor", 0L)
+    fun setSweepCursor(ctx: Context, v: Long) = cfg(ctx).edit().putLong("sweepCursor", v).apply()
+    fun sweepDone(ctx: Context) = cfg(ctx).getBoolean("sweepDone", false)
+    fun setSweepDone(ctx: Context, v: Boolean) = cfg(ctx).edit().putBoolean("sweepDone", v).apply()
+    /** 폴더 설정이 바뀌면 대조 기준이 달라지므로 처음부터 다시. */
+    fun resetSweep(ctx: Context) {
+        cfg(ctx).edit().putLong("sweepCursor", 0L).putBoolean("sweepDone", false).apply()
+    }
+
     // ---- 상태(UI 표시용) ----
     fun setState(ctx: Context, lastRunAt: Long, pending: Int, uploading: Boolean, lastError: String?) {
         val e = cfg(ctx).edit()

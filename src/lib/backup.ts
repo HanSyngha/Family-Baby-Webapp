@@ -42,8 +42,18 @@ export interface UpdateInfo {
   url?: string;
 }
 
+export interface BackupProgress {
+  photoTotal: number;
+  photoDone: number;
+  videoTotal: number;
+  videoDone: number;
+  /** 최초 전체 대조가 끝났는지. false면 숫자가 실제보다 낮게 보일 수 있다. */
+  sweepDone: boolean;
+}
+
 interface PeanutBackupPlugin {
   getStatus(): Promise<BackupStatus>;
+  getBackupProgress(): Promise<BackupProgress>;
   setAuth(opts: { refreshToken: string | null }): Promise<void>;
   setConfig(cfg: BackupConfig): Promise<void>;
   runNow(): Promise<void>;
