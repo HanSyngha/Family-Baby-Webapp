@@ -8,10 +8,10 @@ import MediaGrid from '../components/gallery/MediaGrid';
 import Lightbox from '../components/gallery/Lightbox';
 import ShortsViewer from '../components/gallery/ShortsViewer';
 import UploadModal from '../components/gallery/UploadModal';
-import AddToAlbumSheet from '../components/gallery/AddToAlbumSheet';
 import ShareSheet from '../components/gallery/ShareSheet';
 import DateScrubber from '../components/gallery/DateScrubber';
 import type { GalleryEvent } from '../api';
+import Icon from '../components/ui/Icon';
 import styles from './Gallery.module.css';
 
 interface Props {
@@ -41,9 +41,7 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [sharing, setSharing] = useState(false);
-  const [copying, setCopying] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [showAddToAlbum, setShowAddToAlbum] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [events, setEvents] = useState<GalleryEvent[]>([]);
   const [shuffledItems, setShuffledItems] = useState<{ id: number; filename: string; type: string }[] | null>(null);
@@ -253,47 +251,14 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
 
   const canShare = typeof navigator !== 'undefined' && 'share' in navigator;
 
-  const handleCopyToPeanut = useCallback(async () => {
-    if (selectedIds.size === 0) return;
-    setCopying(true);
-    try {
-      const result = await api.copyToPeanut(Array.from(selectedIds));
-      const parts: string[] = [];
-      if (result.copied > 0) parts.push(`${result.copied}개 공유 완료`);
-      if (result.duplicates > 0) parts.push(`${result.duplicates}개 중복`);
-      if (result.errors.length > 0) parts.push(`${result.errors.length}개 실패`);
-      alert(parts.join(', '));
-      exitSelectMode();
-    } catch (e: any) {
-      alert('공유 실패: ' + (e.message || '알 수 없는 오류'));
-    } finally {
-      setCopying(false);
-    }
-  }, [selectedIds, exitSelectMode]);
-
-  // 공유 완료: 새 모델에선 공유해도 내 개인공간(uploaderId)에 그대로 남는다.
-  // 제거하지 말고 in-place로 shared 표시만(서버 상태와 일치 + 새로고침 시 안 사라짐).
-  const handleShareDone = useCallback((movedIds: number[]) => {
-    setItems(prev => prev.map(i => movedIds.includes(i.id) ? { ...i, visibility: 'shared' as const, ownerId: null } : i));
+  // 공유 범위 변경 완료.
+  // 한 번에 여러 범위(공유/여행/땅콩땅콩/Peanut World)가 바뀔 수 있어 낙관적 갱신으로는
+  // 상태를 정확히 맞추기 어렵다. 목록을 다시 불러 서버가 말하는 상태를 그대로 쓴다.
+  const handleShareDone = useCallback((_changedIds: number[]) => {
     setShowShareSheet(false);
     exitSelectMode();
-  }, [exitSelectMode]);
-
-  // 공유 취소: 다시 나만 보게(땅땅&콩콩·여행·땅콩땅콩에서 모두 내림)
-  const handleUnshare = useCallback(async () => {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
-    if (!confirm(`${ids.length}장을 공유 취소할까요?\n땅땅&콩콩·여행·땅콩땅콩에서 내려가고 나만 보게 됩니다.`)) return;
-    await api.unshare(ids);
-    setItems(prev => prev.map(i => ids.includes(i.id) ? { ...i, visibility: 'private' as const, ownerId: user.id, inTrip: false, inPeanut: false } : i));
-    exitSelectMode();
-  }, [selectedIds, exitSelectMode, user.id]);
-
-  // 공유 갤러리 → 여행에 추가 완료: 항목은 그대로 유지(공유 상태 변화 없음)
-  const handleAddedToTrip = useCallback(() => {
-    setShowAddToAlbum(false);
-    exitSelectMode();
-  }, [exitSelectMode]);
+    loadMore(null, sort).catch(() => {});
+  }, [exitSelectMode, loadMore, sort]);
 
   const handleShare = useCallback(async () => {
     if (selectedIds.size === 0) return;
@@ -573,44 +538,33 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
           <div className={styles.selectActions}>
             <button className={styles.playBtn} onClick={playSelected} disabled={selectedIds.size === 0} title="선택 항목 반복재생">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
-              재생
+              <span>재생</span>
             </button>
             <button className={styles.downloadBtn} onClick={downloadSelected} disabled={selectedIds.size === 0} title="선택 항목 다운로드">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
-              저장
+              <Icon name="download" size={15} />
+              <span>저장</span>
             </button>
             {canShare && (
-              <button className={styles.shareBtn} onClick={handleShare} disabled={selectedIds.size === 0 || sharing}>
-                {sharing ? '내보내는 중...' : '외부 공유'}
+              <button className={styles.shareBtn} onClick={handleShare} disabled={selectedIds.size === 0 || sharing} title="다른 앱으로 내보내기">
+                {sharing ? <span className={styles.shareBtnSpinner} /> : <Icon name="plus" size={15} />}
+                <span>{sharing ? '내보내는 중' : '내보내기'}</span>
               </button>
             )}
-            {/* 개인: 체크박스로 한설/여행/땅콩땅콩 공유 */}
-            {isPrivate && (
-              <button className={styles.copyBtn} onClick={() => setShowShareSheet(true)} disabled={selectedIds.size === 0}>
-                공유하기
-              </button>
-            )}
-            {isPrivate && (
-              <button className={styles.copyBtn} onClick={handleUnshare} disabled={selectedIds.size === 0}>
-                공유 취소
-              </button>
-            )}
-            {/* 공유 갤러리(땅땅&콩콩): 관리자만 여행 추가 / 땅콩땅콩 게시 */}
-            {!isPrivate && isMaster && (
-              <button className={styles.shareBtn} onClick={() => setShowAddToAlbum(true)} disabled={selectedIds.size === 0}>
-                여행에 추가
-              </button>
-            )}
-            {!isPrivate && isMaster && (
-              <button className={styles.copyBtn} onClick={handleCopyToPeanut} disabled={selectedIds.size === 0 || copying}>
-                {copying ? '공유 중...' : '땅콩콩땅'}
+            {/* 공유 범위 — 개인탭·공유탭 공통.
+                예전엔 '공유하기 / 공유 취소 / 여행에 추가 / 땅콩콩땅'이 따로 있었고
+                공유하기와 공유 취소가 같은 주황 버튼이라 정반대 동작을 구분할 수 없었다.
+                지금 어디까지 나가 있는지 보여주고 켜고 끄는 시트 하나로 합친다. */}
+            {(isPrivate || isMaster) && (
+              <button className={styles.scopeBtn} onClick={() => setShowShareSheet(true)} disabled={selectedIds.size === 0} title="공유 범위 관리">
+                <Icon name="globe" size={15} />
+                <span>공유 범위</span>
               </button>
             )}
             {/* 일괄 삭제 — 개인공간(항상) + 공유는 master만 */}
             {(isPrivate || isMaster) && (
-              <button className={styles.deleteSelBtn} onClick={deleteSelected} disabled={selectedIds.size === 0 || deleting}>
+              <button className={styles.deleteSelBtn} onClick={deleteSelected} disabled={selectedIds.size === 0 || deleting} title="선택 항목 삭제">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
-                {deleting ? '삭제 중...' : '삭제'}
+                <span>{deleting ? '삭제 중' : '삭제'}</span>
               </button>
             )}
           </div>
@@ -672,24 +626,15 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
         />
       )}
 
-      {/* 개인 → 한설/여행/땅콩땅콩 체크박스 공유 */}
+      {/* 공유 범위 관리 (개인·공유 탭 공통) */}
       {showShareSheet && (
         <ShareSheet
-          mediaIds={Array.from(selectedIds)}
+          items={items.filter(i => selectedIds.has(i.id))}
           onClose={() => setShowShareSheet(false)}
           onDone={handleShareDone}
         />
       )}
 
-      {/* 공유 갤러리 → 여행에 추가 */}
-      {showAddToAlbum && (
-        <AddToAlbumSheet
-          mode="add"
-          mediaIds={Array.from(selectedIds)}
-          onClose={() => setShowAddToAlbum(false)}
-          onDone={handleAddedToTrip}
-        />
-      )}
     </div>
   );
 }

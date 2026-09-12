@@ -708,6 +708,9 @@ export const api = {
       '/media/copy-to-peanut',
       { method: 'POST', body: JSON.stringify({ ids }) }
     ),
+  // copy-to-peanut의 짝. 땅콩땅콩에서만 내린다(가족 공유는 그대로 유지).
+  removeFromPeanut: (mediaIds: number[]) =>
+    request<{ ok: boolean; removed: number }>('/media/remove-from-peanut', { method: 'POST', body: JSON.stringify({ mediaIds }) }),
   recordView: (id: number) => request<{ ok: boolean }>(`/media/${id}/view`, { method: 'POST' }),
   toggleLike: (id: number) => request<{ liked: boolean }>(`/media/${id}/like`, { method: 'POST' }),
   toggleFavorite: (id: number) => request<{ favorited: boolean }>(`/media/${id}/favorite`, { method: 'POST' }),

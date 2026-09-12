@@ -297,6 +297,32 @@ export function registerAlbumRoutes(app: FastifyInstance) {
     return { ok: true, changed: res.changes, skipped: 0 };
   });
 
+  // 땅콩땅콩(구앱)에서 내리기.
+  //
+  // copy-to-peanut의 짝. 지금까지 '올리기'만 있고 '내리기'는 공유 자체를 취소해야만
+  // 딸려 내려갔다 — 땅콩땅콩에서만 빼고 싶을 때 방법이 없었다.
+  // 해시로 매칭해 구앱 DB의 레코드만 지운다. 파일은 가족 볼륨 소유라 건드리지 않는다.
+  app.post('/api/media/remove-from-peanut', { preHandler: authenticate }, async (request, reply) => {
+    if (!requireMaster(request, reply)) return;
+    if (!peanutDb) return reply.code(400).send({ error: '땅콩땅콩땅콩콩땅 연결 불가' });
+    const { mediaIds } = request.body as { mediaIds: number[] };
+    if (!Array.isArray(mediaIds) || mediaIds.length === 0) return reply.code(400).send({ error: '선택된 미디어 없음' });
+
+    const ph = placeholders(mediaIds.length);
+    const hashes = (db.prepare(`SELECT hash FROM media WHERE id IN (${ph}) AND hash IS NOT NULL`).all(...mediaIds) as { hash: string }[])
+      .map(r => r.hash);
+    if (hashes.length === 0) return { ok: true, removed: 0 };
+
+    const hph = placeholders(hashes.length);
+    try {
+      const res = peanutDb.prepare(`DELETE FROM media WHERE hash IN (${hph})`).run(...hashes);
+      return { ok: true, removed: res.changes };
+    } catch (e) {
+      request.log.error(e, 'remove-from-peanut failed');
+      return reply.code(500).send({ error: '땅콩땅콩에서 내리지 못했습니다' });
+    }
+  });
+
   // 공유 취소: 다시 개인공간(비공개)로. 본인이 올린 것만. 땅땅&콩콩/여행/땅콩땅콩에서 모두 내린다.
   app.post('/api/media/unshare', { preHandler: authenticate }, async (request, reply) => {
     if (!requireMaster(request, reply)) return;
