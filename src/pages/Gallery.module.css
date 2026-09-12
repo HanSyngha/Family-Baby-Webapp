@@ -662,8 +662,11 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Fold 접힘(280px): 글자를 숨기고 아이콘만 남기되, 주 동작만 글자를 지킨다 */
-@media (max-width: 360px) {
+/* Fold 접힘(280px)에서만 글자를 숨기고 아이콘만 남긴다. 주 동작은 글자를 지킨다.
+   ⚠️ 기준을 360px로 잡으면 안 된다 — 갤럭시 S가 정확히 360px이고, 거기서 글자가
+   사라지면 '뭐가 뭔지 모르겠다'는 원래 문제로 돌아간다. 그보다 좁을 때만 접는다.
+   (넘치면 .selectActions가 가로 스크롤로 흘려보낸다) */
+@media (max-width: 330px) {
   .selectBar { padding: 10px 12px; gap: 8px; }
   .playBtn span,
   .downloadBtn span,
