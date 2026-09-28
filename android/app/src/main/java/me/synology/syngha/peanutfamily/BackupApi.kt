@@ -11,6 +11,7 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okio.BufferedSink
 import okio.source
+import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
@@ -53,6 +54,23 @@ class BackupApi(private val baseUrl: String, private val resolver: ContentResolv
         client.newCall(req).execute().use { res ->
             if (!res.isSuccessful) return false
             return JSONObject(res.body?.string() ?: "{}").optBoolean("duplicate", false)
+        }
+    }
+
+    /**
+     * (파일명, 바이트 크기) 일괄 대조. 서버에 같은 원본이 있는 항목의 인덱스를 돌려준다. 실패 시 null.
+     * 한 장씩 해싱·질의하는 대조보다 수천 배 빠르다 — 재설치 직후 수만 장을 한 번에 확인할 때 쓴다.
+     */
+    fun matchByNameSize(accessToken: String, items: List<MediaItem>): List<Int>? {
+        val arr = JSONArray()
+        for (it in items) arr.put(JSONObject().put("name", it.displayName).put("size", it.size))
+        val body = JSONObject().put("items", arr).toString().toRequestBody(jsonType)
+        val req = Request.Builder().url("$baseUrl/api/backup/match")
+            .header("Authorization", "Bearer $accessToken").post(body).build()
+        client.newCall(req).execute().use { res ->
+            if (!res.isSuccessful) return null
+            val found = JSONObject(res.body?.string() ?: "{}").optJSONArray("found") ?: return null
+            return List(found.length()) { found.getInt(it) }
         }
     }
 

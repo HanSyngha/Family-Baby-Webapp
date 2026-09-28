@@ -3,12 +3,18 @@ package me.synology.syngha.peanutfamily;
 import android.app.DownloadManager;
 import android.content.Context;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.URLUtil;
 import android.webkit.WebView;
 import android.widget.Toast;
+
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -19,6 +25,24 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
 
         WebView webView = getBridge().getWebView();
+
+        // 키보드가 댓글 입력창을 덮던 문제(Android 15+). targetSdk 36이면 엣지투엣지가 강제돼 adjustResize가
+        // 창을 줄이지 않고, 키보드 높이(IME 인셋)는 앱이 직접 반영해야 한다. Capacitor의 adjustMarginsForEdgeToEdge
+        // 리스너는 시스템바만 여백으로 주고 IME는 버린다(CONSUMED) → WebView가 키보드 뒤까지 그대로 깔렸다.
+        // 같은 리스너를 IME까지 반영하는 버전으로 덮어쓴다(Capacitor는 super.onCreate 안에서 먼저 등록함).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            ViewCompat.setOnApplyWindowInsetsListener(webView, (v, insets) -> {
+                Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+                Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+                ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) v.getLayoutParams();
+                mlp.leftMargin = bars.left;
+                mlp.topMargin = bars.top;
+                mlp.rightMargin = bars.right;
+                mlp.bottomMargin = Math.max(bars.bottom, ime.bottom);   // IME 인셋은 내비게이션 바를 포함한 높이
+                v.setLayoutParams(mlp);
+                return WindowInsetsCompat.CONSUMED;
+            });
+        }
 
         // 카카오 로그인 페이지는 UA의 "; wv" 표식으로 WebView를 감지하면 "카카오톡으로 로그인" 버튼을
         // 아예 내려주지 않고 계정 입력만 보여준다(크롬 UA와 대조 실측). 그래서 앱에서는 매번 아이디를 쳐야 했다.

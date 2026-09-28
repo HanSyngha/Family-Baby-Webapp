@@ -162,7 +162,10 @@ class BackupWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
         if (BackupPrefs.sweepDone(ctx)) return
         val deadline = now() + SWEEP_BUDGET_MS
         var cursor = BackupPrefs.sweepCursor(ctx)
-        var processedAny = false
+        // 끝까지 훑었을 때만 완료. 예전엔 '중지'로 멈춰도 완료로 찍혀 스윕이 다시 돌지 않았다.
+        var reachedEnd = true
+
+        matchByNameSize(api, accessToken)
 
         try {
             val all = MediaScanner.newItems(
@@ -172,9 +175,18 @@ class BackupWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                 BackupPrefs.setSweepDone(ctx, true)
                 return
             }
+            // 이미 확인된 항목(이름·크기 대조 포함)은 파일을 읽지 않고 지나간다 — 남은 것만 해시로.
+            val verifiedPhotos = VerifiedStore.idsOf(ctx, false)
+            val verifiedVideos = VerifiedStore.idsOf(ctx, true)
             for (item in all) {
-                if (isStopped || BackupPrefs.stopRequested(ctx)) break
-                if (now() > deadline) break
+                if (isStopped || BackupPrefs.stopRequested(ctx) || now() > deadline) {
+                    reachedEnd = false
+                    break
+                }
+                if ((if (item.isVideo) verifiedVideos else verifiedPhotos).contains(item.id)) {
+                    cursor = item.dateAdded
+                    continue
+                }
                 try {
                     val readUri = MediaScanner.readUri(item.uri, hasLocation)
                     val realSize = MediaScanner.sizeOf(ctx.contentResolver, readUri) ?: item.size
@@ -186,15 +198,35 @@ class BackupWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                     // 한 장 실패가 스윕 전체를 막지 않게. 다음 회차에 커서가 지나가며 재시도된다.
                 }
                 cursor = item.dateAdded
-                processedAny = true
                 BackupPrefs.setSweepCursor(ctx, cursor)
             }
-            // 끝까지 훑었으면 완료 표시(마지막 항목까지 시간 안에 처리한 경우)
-            if (processedAny && now() <= deadline && !isStopped) {
-                BackupPrefs.setSweepDone(ctx, true)
-            }
+            BackupPrefs.setSweepCursor(ctx, cursor)
+            if (reachedEnd) BackupPrefs.setSweepDone(ctx, true)
         } catch (e: Exception) {
             // 다음 회차에 이어서
+        }
+    }
+
+    /**
+     * 빠른 대조: 아직 확인 안 된 항목 전체를 (파일명, 크기)로 서버에 묶음 질의.
+     * 재설치하면 대조 기록이 비는데, 한 장씩 해싱·질의하는 스윕은 회차당 4분 예산이라 수만 장이면
+     * 며칠이 걸려 홈 진행률이 0%에 멈춘 것처럼 보였다. 여기서 대부분을 몇 초 만에 채우고,
+     * 이름·크기가 안 맞는 나머지만 아래 해시 스윕이 확인한다.
+     */
+    private fun matchByNameSize(api: BackupApi, accessToken: String) {
+        try {
+            val verifiedPhotos = VerifiedStore.idsOf(ctx, false)
+            val verifiedVideos = VerifiedStore.idsOf(ctx, true)
+            val pending = MediaScanner.newItems(
+                ctx.contentResolver, BackupPrefs.folders(ctx), BackupPrefs.includeVideos(ctx), 0L
+            ).filter { !(if (it.isVideo) verifiedVideos else verifiedPhotos).contains(it.id) }
+            for (chunk in pending.chunked(500)) {
+                if (isStopped) return
+                val found = api.matchByNameSize(accessToken, chunk) ?: return
+                VerifiedStore.markAll(ctx, found.mapNotNull { chunk.getOrNull(it) })
+            }
+        } catch (e: Exception) {
+            // 실패해도 해시 스윕이 같은 일을 (느리게) 한다.
         }
     }
 

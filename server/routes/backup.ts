@@ -36,6 +36,25 @@ export function registerBackupRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
+  // 앱 → 서버 일괄 대조: (파일명, 바이트 크기)가 같은 원본이 서버에 있는지.
+  // 앱을 새로 깔면 대조 기록이 비어, 수만 장을 한 장씩 해싱·질의하느라 며칠이 걸렸다(0%에 멈춘 듯 보임).
+  // 폰 파일명은 촬영 시각이라 크기까지 같으면 사실상 같은 파일이다. 안 맞는 것만 앱이 해시로 다시 확인한다.
+  app.post('/api/backup/match', { preHandler: authenticate }, async (request, reply) => {
+    const { role } = (request as any).user;
+    if (role !== 'master') return reply.code(403).send({ error: 'master only' });
+
+    const items = (request.body as any)?.items;
+    if (!Array.isArray(items) || items.length > 1000) return reply.code(400).send({ error: 'items: 최대 1000개 배열' });
+
+    const stmt = db.prepare('SELECT 1 FROM media WHERE originalName = ? AND size = ? LIMIT 1');
+    const found: number[] = [];
+    items.forEach((it: any, i: number) => {
+      if (typeof it?.name === 'string' && Number.isFinite(it?.size) && stmt.get(it.name, it.size)) found.push(i);
+    });
+    request.log.info({ asked: items.length, found: found.length }, 'backup match');
+    return { found };
+  });
+
   // 웹 홈 → 내 기기 진행률. 폰이 여러 대면 가장 최근에 보고한 기기.
   app.get('/api/backup/progress', { preHandler: authenticate }, async (request) => {
     const { userId, role } = (request as any).user;

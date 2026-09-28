@@ -29,12 +29,16 @@ object BackupScheduler {
         wm.enqueueUniquePeriodicWork(PERIODIC, ExistingPeriodicWorkPolicy.UPDATE, req)
     }
 
-    /** 지금 즉시 1회 백업. */
+    /**
+     * 지금 즉시 1회 백업.
+     * KEEP: 이미 돌고 있으면 그대로 둔다. REPLACE였을 땐 버튼을 다시 누르면 돌던 작업이 취소되고,
+     * 새 작업은 단일 실행 가드(running)에 걸려 바로 끝나 — 누를수록 진행이 멈췄다.
+     */
     fun runNow(ctx: Context) {
         val req = OneTimeWorkRequestBuilder<BackupWorker>()
             .setConstraints(constraints(ctx))
             .build()
-        WorkManager.getInstance(ctx).enqueueUniqueWork(ONESHOT, ExistingWorkPolicy.REPLACE, req)
+        WorkManager.getInstance(ctx).enqueueUniqueWork(ONESHOT, ExistingWorkPolicy.KEEP, req)
     }
 
     private fun constraints(ctx: Context): Constraints {

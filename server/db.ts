@@ -585,6 +585,8 @@ try {
   )`);
 } catch (e) { console.error('[DB] backup_progress schema error:', e); }
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_media_takenat ON media(takenAt)'); } catch {}
+// 백업 대조(/api/backup/match): 폰의 (파일명, 바이트 크기)로 서버에 있는지 일괄 조회
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_media_name_size ON media(originalName, size)'); } catch {}
 
 // 앨범: 한설(공유 전체, 앨범 미사용) / 여행(kind='trip')
 try {
@@ -949,10 +951,36 @@ function syncFromPeanut() {
   }
 }
 
+// 구앱에서 지운 사진을 가족 앱에서도 내린다.
+// 위 동기화는 추가만 따라가서, 친척이 올렸다 지운 사진이 가족 앱에 파일 없는 깨진 타일로 남았다
+// (2026-09-28 이수윤이 22:03에 올리고 22:07에 지운 2장). source='peanut' 행은 구앱 파일을 그대로 가리키므로
+// 구앱이 지우면 가족 쪽엔 되살릴 원본이 없다 — 구앱 DB에도 없고 파일도 없는 것만 지운다.
+// 한꺼번에 많이 사라졌다면 삭제가 아니라 마운트 문제일 수 있으니 지우지 않고 로그만 남긴다.
+const PRUNE_LIMIT = 20;
+function pruneDeletedFromPeanut() {
+  if (!peanutDb) return;
+  try {
+    const theirs = new Set((peanutDb.prepare('SELECT filename FROM media').all() as { filename: string }[]).map(r => r.filename));
+    const gone = (db.prepare("SELECT id, filename, originalName FROM media WHERE source = 'peanut'").all() as { id: number; filename: string; originalName: string }[])
+      .filter(r => !theirs.has(r.filename) && !fs.existsSync(path.join(PEANUT_DATA_DIR, 'originals', r.filename)));
+    if (gone.length === 0) return;
+    if (gone.length > PRUNE_LIMIT) {
+      console.warn(`[Sync] 구앱에서 사라진 사진 ${gone.length}장 — ${PRUNE_LIMIT}장 초과라 마운트 이상일 수 있어 지우지 않음`);
+      return;
+    }
+    const del = db.prepare('DELETE FROM media WHERE id = ?');
+    db.transaction(() => { for (const r of gone) del.run(r.id); })();
+    console.log(`[Sync] 구앱에서 삭제된 ${gone.length}장 제거: ${gone.map(r => `${r.id}(${r.originalName})`).join(', ')}`);
+  } catch (err) {
+    console.error('[Sync] Prune error:', err);
+  }
+}
+
 // 역방향 자동 싱크(땅콩땅콩→땅콩페밀리). 요구사항상 기본 비활성 — env로만 활성화.
 if (process.env.ENABLE_PEANUT_SYNC === 'true') {
-  syncFromPeanut();
-  setInterval(syncFromPeanut, 30 * 1000);
+  const tick = () => { syncFromPeanut(); pruneDeletedFromPeanut(); };
+  tick();
+  setInterval(tick, 30 * 1000);
 } else {
   console.log('[Sync] Reverse peanut→family sync disabled (set ENABLE_PEANUT_SYNC=true to enable)');
 }

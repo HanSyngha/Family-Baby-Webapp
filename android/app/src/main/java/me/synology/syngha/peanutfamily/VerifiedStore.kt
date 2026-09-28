@@ -64,6 +64,30 @@ object VerifiedStore {
         }
     }
 
+    /** 여러 항목을 한 트랜잭션으로 기록. 수만 건을 한 건씩 커밋하면 그것만으로 수십 초가 걸린다. */
+    fun markAll(ctx: Context, items: List<MediaItem>) {
+        try {
+            val db = db(ctx)
+            val now = System.currentTimeMillis()
+            db.beginTransaction()
+            try {
+                for (item in items) {
+                    val v = ContentValues().apply {
+                        put("isVideo", if (item.isVideo) 1 else 0)
+                        put("mediaId", item.id)
+                        put("at", now)
+                    }
+                    db.insertWithOnConflict("verified", null, v, SQLiteDatabase.CONFLICT_REPLACE)
+                }
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
+        } catch (e: Exception) {
+            // 진행률 표시용 부가 기능이라 실패해도 백업은 계속돼야 한다.
+        }
+    }
+
     /**
      * 확인된 id 집합. 진행률 계산은 '지금 폰에 있는 항목' 기준이라, 이 집합과 교집합을 낸다.
      * (폰에서 지운 사진이 계속 분자에 남아 100%를 넘기지 않도록)

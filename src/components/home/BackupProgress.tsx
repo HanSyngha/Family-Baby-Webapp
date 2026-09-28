@@ -101,7 +101,9 @@ export default function BackupProgress() {
     };
 
     load().finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
+    // 앱 안에서는 계속 새로 읽는다 — 홈을 보고 있는 동안에도 백업·대조가 진행되면 막대가 따라 오른다.
+    const timer = isNativeApp ? setInterval(() => { if (!document.hidden) load(); }, 5000) : undefined;
+    return () => { alive = false; clearInterval(timer); };
   }, []);
 
   // 앱이 한 번도 보고한 적 없으면 아무것도 보여주지 않는다.
