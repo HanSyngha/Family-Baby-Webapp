@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { api, type User, type MediaItem } from '../api';
 import { useUploadQueue } from '../hooks/useUploadQueue';
 import { useProcessingStatus } from '../hooks/useProcessingStatus';
@@ -32,6 +32,7 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
   const sectionPrefix = `${scope}-month-`;
   const [items, setItems] = useState<MediaItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [prevCursor, setPrevCursor] = useState<string | null>(null); // 날짜 점프 후 위(더 최근)로 이어 불러올 커서
   const [loading, setLoading] = useState(true);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [showShorts, setShowShorts] = useState(false);
@@ -49,14 +50,20 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
   const nextCursorRef = useRef<string | null>(null);
   const [allMedia, setAllMedia] = useState<{ id: number; filename: string; type: string; createdAt: string }[]>([]);
   const [jumping, setJumping] = useState(false);
+  // 목록을 통째로 바꿀 때(처음부터·날짜 점프)마다 +1. 그 전에 나간 요청의 응답은 버린다
+  // (점프 직전에 진행 중이던 '더 불러오기'가 새 목록 뒤에 붙고 커서를 옛 위치로 되돌리던 문제)
+  const listGenRef = useRef(0);
 
   const loadMore = useCallback(async (cursor?: string | null, sortMode?: SortMode) => {
     const s = sortMode ?? sort;
+    const gen = cursor ? listGenRef.current : ++listGenRef.current;
     const data = await api.getMedia(cursor, s, scope);
+    if (gen !== listGenRef.current) return null;
     if (cursor) {
       setItems(prev => [...prev, ...data.items]);
     } else {
       setItems(data.items);
+      setPrevCursor(null);
     }
     setNextCursor(data.nextCursor);
     nextCursorRef.current = data.nextCursor;
@@ -84,13 +91,17 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
 
   // 특정 날짜로 '바로' 점프: 서버 커서를 그 날짜로 세팅 → 요청 1번으로 그 지점부터 로드.
   // (예전 방식은 지금~그 날짜까지 페이지를 전부 순차 로드해서 옛날일수록 끝없이 걸렸음)
+  // 위쪽은 첫 항목을 prevCursor로 두고, 맨 위 근처에 오면 그보다 최근 것을 앞에 붙인다.
   const jumpToDate = useCallback(async (cursor: string) => {
     setJumping(true);
+    const gen = ++listGenRef.current;
     try {
       const data = await api.getMedia(cursor, 'recent', scope);
+      if (gen !== listGenRef.current) return;
       setItems(data.items);
       setNextCursor(data.nextCursor);
       nextCursorRef.current = data.nextCursor;
+      setPrevCursor(data.items.length ? `${data.items[0].createdAt}|${data.items[0].id}` : null);
       requestAnimationFrame(() => { const el = getScrollEl(); if (el) el.scrollTop = 0; });
     } catch { /* 무시 */ } finally {
       setJumping(false);
@@ -182,6 +193,38 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
     loadingMoreRef.current = true;
     loadMore(nextCursor).finally(() => { loadingMoreRef.current = false; });
   }, [nextCursor, loadMore]);
+
+  // 위로 끼워 넣을 때 화면이 튀지 않게: 붙이기 직전 스크롤 위치·높이를 기억했다가
+  // 렌더 직후(페인트 전) 늘어난 높이만큼 내려 준다.
+  const prependAnchorRef = useRef<{ el: HTMLElement; top: number; height: number } | null>(null);
+  useLayoutEffect(() => {
+    const a = prependAnchorRef.current;
+    if (!a) return;
+    prependAnchorRef.current = null;
+    a.el.scrollTop = a.top + (a.el.scrollHeight - a.height);
+  }, [items]);
+
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const loadingNewerRef = useRef(false);
+  const handleLoadNewer = useCallback(() => {
+    if (!prevCursor || loadingNewerRef.current) return;
+    loadingNewerRef.current = true;
+    const gen = listGenRef.current;
+    api.getMediaNewer(prevCursor, scope).then(data => {
+      if (gen !== listGenRef.current) return;
+      const el = getScrollEl();
+      if (el) prependAnchorRef.current = { el, top: el.scrollTop, height: el.scrollHeight };
+      const have = new Set(itemsRef.current.map(i => i.id));
+      const fresh = data.items.filter(i => !have.has(i.id));
+      setItems(prev => [...fresh, ...prev]);
+      setPrevCursor(data.prevCursor);
+      // 라이트박스가 열려 있으면 보던 사진이 바뀌지 않게 번호를 민다(셔플 재생은 별도 목록이라 제외)
+      if (!shuffledItems && fresh.length) setLightboxIndex(i => (i === null ? i : i + fresh.length));
+    }).catch(() => {}).finally(() => { loadingNewerRef.current = false; });
+    // getScrollEl은 stable(useCallback [])이라 deps 생략
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prevCursor, scope, shuffledItems]);
 
   const handleDelete = useCallback(async (id: number) => {
     await api.deleteMedia(id);
@@ -515,6 +558,8 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
             onItemClick={handleItemClick}
             onLoadMore={handleLoadMore}
             hasMore={!!nextCursor}
+            onLoadNewer={handleLoadNewer}
+            hasNewer={sort === 'recent' && !!prevCursor}
             sort={sort}
             columns={columns}
             selectMode={selectMode}

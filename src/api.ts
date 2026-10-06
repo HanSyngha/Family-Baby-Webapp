@@ -598,7 +598,13 @@ export const api = {
       `/media${qs ? `?${qs}` : ''}`,
     );
   },
-  getVideoFeed: (cursor?: string | null, scope?: string) => {
+  // 날짜 점프 후 위로: after('createdAt|id')보다 최근 것 (최신순으로 옴)
+  getMediaNewer: (after: string, scope?: string) => {
+    const params = new URLSearchParams({ after, sort: 'recent' });
+    if (scope) params.set('scope', scope);
+    return request<{ items: MediaItem[]; prevCursor: string | null }>(`/media?${params}`);
+  },
+  getVideoFeed:(cursor?: string | null, scope?: string) => {
     const params = new URLSearchParams();
     if (cursor) params.set('cursor', cursor);
     if (scope) params.set('scope', scope);
