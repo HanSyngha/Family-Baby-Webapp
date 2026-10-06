@@ -343,6 +343,21 @@ export function DateChips({ value, onChange, allowNone, past }: { value: string 
   const today = todayStr();
   const tomorrow = todayStr(past ? -1 : 1);
   const isCustom = value !== null && value !== today && value !== tomorrow;
+  const dateRef = useRef<HTMLInputElement>(null);
+  // 숨긴 date input 위를 '직접 눌러야' 열리던 방식은, 한 번 고른 뒤(포커스가 남아 있거나 키보드가 내려가며
+  // 화면이 밀리면) 안드로이드에서 다시 안 열렸다. 칩을 누르면 달력을 명시적으로 연다.
+  const openPicker = () => {
+    const el = dateRef.current;
+    if (!el) return;
+    el.blur();
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    try {
+      el.showPicker();
+    } catch {
+      el.focus();
+      el.click();
+    }
+  };
   return (
     <div className={styles.chipGroup} role="radiogroup" aria-label="날짜">
       {allowNone && (
@@ -350,16 +365,24 @@ export function DateChips({ value, onChange, allowNone, past }: { value: string 
       )}
       <button type="button" role="radio" aria-checked={value === today} className={`${styles.chip} ${value === today ? styles.chipOn : ''}`} onClick={() => onChange(today)}>오늘</button>
       <button type="button" role="radio" aria-checked={value === tomorrow} className={`${styles.chip} ${value === tomorrow ? styles.chipOn : ''}`} onClick={() => onChange(tomorrow)}>{past ? '어제' : '내일'}</button>
-      <label className={`${styles.chip} ${styles.dateChip} ${isCustom ? styles.chipOn : ''}`}>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={isCustom}
+        className={`${styles.chip} ${styles.dateChip} ${isCustom ? styles.chipOn : ''}`}
+        onClick={openPicker}
+      >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
         <span>{isCustom ? fmtDate(value!) : '날짜'}</span>
         <input
+          ref={dateRef}
           type="date"
+          tabIndex={-1}
+          aria-hidden="true"
           value={value ?? ''}
           onChange={e => onChange(e.target.value || (allowNone ? null : today))}
-          aria-label="날짜 고르기"
         />
-      </label>
+      </button>
     </div>
   );
 }

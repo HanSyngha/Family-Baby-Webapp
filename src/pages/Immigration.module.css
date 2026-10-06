@@ -1029,14 +1029,15 @@
 .chip:active { transform: scale(0.96); }
 .chipOn { background: var(--imm-gold); border-color: var(--imm-gold); color: #0B1528; font-weight: 800; }
 
-/* 달력 칩: 투명한 date input을 칩 위에 덮어 칩을 누르면 바로 달력이 뜬다 */
+/* 달력 칩: date input은 보이지 않게 칩 안에 두고, 칩을 누르면 showPicker()로 연다 */
 .dateChip input {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
   opacity: 0;
-  cursor: pointer;
+  pointer-events: none;
   color-scheme: dark;
 }
 

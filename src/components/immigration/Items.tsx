@@ -42,7 +42,6 @@ export function TodoTab({ items, people, myId }: { items: Items; people: ImmPers
   const [editing, setEditing] = useState<ImmItem | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
   const [leaving, setLeaving] = useState<number[]>([]);
-  const inputRef = useRef<HTMLInputElement>(null);
   const clearToast = useCallback(() => setToast(null), []);
 
   const add = async () => {
@@ -52,7 +51,6 @@ export function TodoTab({ items, people, myId }: { items: Items; people: ImmPers
       await api.createImmItem({ title: title.trim(), dueDate: due, assigneeId: assignee, status: 'todo' });
       setTitle('');
       await items.reload();
-      inputRef.current?.focus();
     } finally {
       setAdding(false);
     }
@@ -94,7 +92,6 @@ export function TodoTab({ items, people, myId }: { items: Items; people: ImmPers
       <div className={`${styles.card} ${styles.quickAdd}`}>
         <div className={styles.quickRow}>
           <input
-            ref={inputRef}
             className={styles.quickInput}
             placeholder="할 일 추가"
             value={title}
