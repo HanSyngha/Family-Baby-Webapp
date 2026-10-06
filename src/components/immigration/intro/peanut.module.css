@@ -1,0 +1,303 @@
+/* 땅콩 가족 장면들 — 시간은 각 장면 ms(peanut.tsx)와 맞춘다 */
+
+.peanutSvg, .babySvg { display: block; width: 100%; height: auto; overflow: visible; }
+
+/* 눈 깜빡임 (공통) */
+.eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: blink 2200ms linear both;
+}
+
+@keyframes blink {
+  0%, 62%, 66.5%, 100% { transform: scaleY(1); }
+  64%                  { transform: scaleY(0.1); }
+}
+
+/* ---------- 땅콩 가족 (2200ms) ---------- */
+
+.familyStage {
+  position: relative;
+  width: min(300px, 84vw);
+  height: 270px;
+}
+
+.spot {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 240px;
+  height: 40px;
+  margin-left: -120px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(227, 194, 126, 0.35), transparent);
+  animation: spotIn 2200ms ease-out both;
+}
+
+@keyframes spotIn {
+  0% { opacity: 0; transform: scaleX(0.4); }
+  30%, 100% { opacity: 1; transform: none; }
+}
+
+.parent {
+  position: absolute;
+  bottom: 26px;
+  width: 92px;
+  transform-origin: 50% 100%;
+}
+
+.parentL { left: calc(50% - 98px); animation: hopL 2200ms cubic-bezier(0.3, 0, 0.3, 1) both; }
+.parentR { left: calc(50% + 6px); animation: hopR 2200ms cubic-bezier(0.3, 0, 0.3, 1) both; }
+
+/* 두 번 깡충 → 착지(살짝 눌림) → 서로 기대어 하트 */
+@keyframes hopL {
+  0%   { transform: translateX(-70vw) translateY(0); }
+  8%   { transform: translateX(-46vw) translateY(-46px); }
+  15%  { transform: translateX(-24vw) translateY(0) scale(1.06, 0.92); }
+  23%  { transform: translateX(-9vw) translateY(-30px); }
+  30%  { transform: translateX(0) translateY(0) scale(1.08, 0.9); }
+  35%  { transform: translateX(0) scale(1) rotate(0deg); }
+  45%  { transform: translateX(0) rotate(-17deg); }
+  48%  { transform: translateX(0) rotate(-15deg); }
+  100% { transform: translateX(0) rotate(-16deg); }
+}
+
+@keyframes hopR {
+  0%, 4% { transform: translateX(70vw) translateY(0); }
+  12%  { transform: translateX(46vw) translateY(-46px); }
+  19%  { transform: translateX(24vw) translateY(0) scale(1.06, 0.92); }
+  27%  { transform: translateX(9vw) translateY(-30px); }
+  34%  { transform: translateX(0) translateY(0) scale(1.08, 0.9); }
+  39%  { transform: translateX(0) scale(1) rotate(0deg); }
+  47%  { transform: translateX(0) rotate(17deg); }
+  50%  { transform: translateX(0) rotate(15deg); }
+  100% { transform: translateX(0) rotate(16deg); }
+}
+
+.baby {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 58px;
+  margin-left: -29px;
+  transform-origin: 50% 100%;
+  animation: babyPop 2200ms cubic-bezier(0.3, 0, 0.3, 1) both;
+}
+
+@keyframes babyPop {
+  0%, 40% { transform: translateY(30px) scale(0); opacity: 0; }
+  47%     { transform: translateY(-14px) scale(1.12); opacity: 1; }
+  52%     { transform: translateY(0) scale(0.94, 1.06); }
+  56%     { transform: translateY(0) scale(1); }
+  100%    { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.sparkles span {
+  position: absolute;
+  left: calc(50% + cos(calc(var(--i) * 36deg + 198deg)) * 128px);
+  top: calc(118px + sin(calc(var(--i) * 36deg + 198deg)) * 96px);
+  width: 9px;
+  height: 9px;
+  background: #E3C27E;
+  transform: rotate(45deg) scale(0);
+  border-radius: 1px;
+  box-shadow: 0 0 10px rgba(227, 194, 126, 0.9);
+  animation: sparkle 2200ms ease-out both;
+  animation-delay: calc(var(--i) * 40ms);
+}
+
+@keyframes sparkle {
+  0%, 50% { transform: rotate(45deg) scale(0); opacity: 0; }
+  58%     { transform: rotate(45deg) scale(1.2); opacity: 1; }
+  80%     { transform: rotate(45deg) scale(0.6); opacity: 0.7; }
+  100%    { transform: rotate(45deg) scale(0); opacity: 0; }
+}
+
+/* ---------- 땅콩 가족 비행기 (2300ms) ---------- */
+
+.planeStage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.cloud {
+  position: absolute;
+  height: 34px;
+  border-radius: 40px;
+  background: rgba(255, 255, 255, 0.16);
+  filter: blur(6px);
+}
+
+.cloud1 { top: 22%; width: 180px; animation: drift 2300ms linear both; }
+.cloud2 { top: 58%; width: 240px; animation: drift 2300ms linear both; animation-duration: 1500ms; opacity: 0.8; }
+.cloud3 { top: 76%; width: 140px; animation: drift 2300ms linear both; animation-duration: 1900ms; }
+
+@keyframes drift {
+  from { transform: translateX(110vw); }
+  to   { transform: translateX(-60vw); }
+}
+
+.planeFly {
+  position: absolute;
+  top: 34%;
+  left: 0;
+  width: min(300px, 84vw);
+  animation: planePath 2300ms cubic-bezier(0.45, 0, 0.3, 1) both;
+}
+
+@keyframes planePath {
+  0%   { transform: translateX(-110%) translateY(14px) rotate(0deg); }
+  28%  { transform: translateX(calc(50vw - 50%)) translateY(0) rotate(0deg); }
+  36%  { transform: translateX(calc(50vw - 50%)) translateY(-5px) rotate(-1deg); }
+  44%  { transform: translateX(calc(50vw - 50%)) translateY(2px) rotate(0deg); }
+  50%  { transform: translateX(calc(50vw - 46%)) translateY(0) rotate(-3deg); }
+  72%  { transform: translateX(calc(100vw + 10%)) translateY(-34vh) rotate(-16deg) scale(0.62); }
+  100% { transform: translateX(calc(100vw + 10%)) translateY(-34vh) rotate(-16deg) scale(0.62); }
+}
+
+.plane { display: block; width: 100%; height: auto; filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.35)); }
+
+.contrail {
+  position: absolute;
+  right: 92%;
+  top: 56%;
+  height: 4px;
+  width: 0;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65));
+  animation: trail 2300ms ease-out both;
+}
+
+@keyframes trail {
+  0%, 48% { width: 0; opacity: 0; }
+  56%     { width: 40vw; opacity: 1; }
+  75%     { width: 70vw; opacity: 0.6; }
+  100%    { width: 70vw; opacity: 0; }
+}
+
+.windowFace {
+  animation: faceBob 2300ms ease-in-out both;
+  animation-delay: var(--d, 0ms);
+}
+
+@keyframes faceBob {
+  0%, 30%, 100% { transform: translateY(0); }
+  34% { transform: translateY(-2.5px); }
+  38% { transform: translateY(0); }
+}
+
+/* ---------- 캐리어 (2200ms) ---------- */
+
+.caseStage {
+  position: relative;
+  width: min(300px, 84vw);
+  height: 290px;
+}
+
+.floor {
+  position: absolute;
+  left: -20vw;
+  right: -20vw;
+  bottom: 18px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(227, 194, 126, 0.4), transparent);
+}
+
+.caseGroup {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  width: 150px;
+  animation: caseRoll 2200ms cubic-bezier(0.4, 0, 0.3, 1) both;
+}
+
+@keyframes caseRoll {
+  0%   { transform: translateX(calc(-50% - 80vw)); }
+  24%  { transform: translateX(calc(-50% + 8px)); }
+  28%  { transform: translateX(-50%); }
+  60%  { transform: translateX(-50%); }
+  64%  { transform: translateX(calc(-50% - 10px)); }
+  84%  { transform: translateX(calc(-50% + 90vw)); }
+  100% { transform: translateX(calc(-50% + 90vw)); }
+}
+
+.suitcase { position: relative; display: block; width: 100%; height: auto; }
+
+.rider {
+  position: absolute;
+  bottom: 128px;
+  width: 58px;
+  transform-origin: 50% 100%;
+}
+
+.riderL { left: 14px; animation: ride 2200ms cubic-bezier(0.3, 0, 0.3, 1) both; }
+.riderR { left: 76px; animation: ride 2200ms cubic-bezier(0.3, 0, 0.3, 1) both; animation-delay: 160ms; }
+
+@keyframes ride {
+  0%, 27% { transform: translateY(-46vh) rotate(-8deg); opacity: 0; }
+  28%     { opacity: 1; }
+  35%     { transform: translateY(0) scale(1.1, 0.86); }
+  39%     { transform: translateY(-10px) scale(0.96, 1.04); }
+  43%     { transform: translateY(0) scale(1); }
+  62%     { transform: translateY(0) rotate(0deg); }
+  66%     { transform: translateY(0) rotate(-10deg); }
+  100%    { transform: translateY(0) rotate(-10deg); opacity: 1; }
+}
+
+.pocketBaby {
+  position: absolute;
+  left: 50%;
+  bottom: 30px;
+  width: 40px;
+  margin-left: -20px;
+  animation: peek 2200ms cubic-bezier(0.3, 0, 0.3, 1) both;
+}
+
+@keyframes peek {
+  0%, 44% { transform: translateY(20px) scale(0.2); opacity: 0; }
+  50%     { transform: translateY(-6px) scale(1.1); opacity: 1; }
+  55%, 100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.tag {
+  transform-box: view-box;
+  transform-origin: 118px 20px;
+  animation: swing 2200ms ease-in-out both;
+}
+
+@keyframes swing {
+  0%   { transform: rotate(28deg); }
+  20%  { transform: rotate(-22deg); }
+  30%  { transform: rotate(16deg); }
+  40%  { transform: rotate(-8deg); }
+  50%, 62% { transform: rotate(0deg); }
+  72%, 100% { transform: rotate(34deg); }
+}
+
+.speedLines {
+  position: absolute;
+  right: 100%;
+  top: 30%;
+  width: 40vw;
+  height: 60%;
+}
+
+.speedLines span {
+  position: absolute;
+  right: 6px;
+  top: calc(var(--i) * 25%);
+  height: 2px;
+  width: 0;
+  border-radius: 1px;
+  background: linear-gradient(90deg, transparent, rgba(227, 194, 126, 0.7));
+  animation: speed 2200ms ease-out both;
+  animation-delay: calc(var(--i) * 30ms);
+}
+
+@keyframes speed {
+  0%, 62% { width: 0; opacity: 0; }
+  68%     { width: 30vw; opacity: 1; }
+  84%     { width: 40vw; opacity: 0; }
+  100%    { width: 40vw; opacity: 0; }
+}

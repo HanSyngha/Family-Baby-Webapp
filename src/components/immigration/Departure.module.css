@@ -148,6 +148,19 @@
   100%      { opacity: 0; }
 }
 
+.sceneLabel {
+  position: absolute;
+  top: calc(14px + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  z-index: 3;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(241, 232, 216, 0.55);
+}
+
 .caption {
   position: relative;
   z-index: 2;
@@ -163,8 +176,8 @@
   96%,100% { opacity: 0; }
 }
 
-/* 나머지 연출은 장면이 끝난 뒤(≈58~62%)에 말씀이 뜬다 */
-.c_board, .c_route { animation-name: captionLate; }
+/* 장면이 끝난 뒤(≈56%)에 말씀이 뜬다 */
+.c_late { animation-name: captionLate; }
 
 @keyframes captionLate {
   0%, 56%  { opacity: 0; transform: translateY(8px); filter: blur(4px); }
@@ -173,8 +186,8 @@
   97%,100% { opacity: 0; }
 }
 
-/* 활주로: 이륙해 별이 뜬 하늘 위에 */
-.c_runway {
+/* 화면 전체를 쓰는 장면: 하늘 쪽(위) */
+.c_top {
   position: absolute;
   top: 30%;
   left: 24px;
@@ -190,20 +203,14 @@
   98%,100% { opacity: 0; }
 }
 
-/* ---------- 연출별 배경 ---------- */
-
-.o_board {
-  background:
-    radial-gradient(70% 45% at 50% 30%, rgba(255, 196, 110, 0.10), transparent 70%),
-    #08090B;
-}
-
-.o_runway { background: #02040B; padding: 0; }
-
-.o_route {
-  background:
-    radial-gradient(80% 60% at 60% 40%, rgba(40, 90, 160, 0.30), transparent 70%),
-    #050C19;
+/* 화면 전체를 쓰는 장면: 아래쪽 */
+.c_bottom {
+  position: absolute;
+  bottom: calc(14% + env(safe-area-inset-bottom));
+  left: 24px;
+  right: 24px;
+  margin: 0 auto;
+  animation-name: captionLate;
 }
 
 /* ---------- 2) 출발 안내판 ---------- */

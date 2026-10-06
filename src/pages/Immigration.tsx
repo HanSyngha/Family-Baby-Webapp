@@ -5,7 +5,7 @@ import { isNativeApp } from '../lib/backup';
 import { usePushNotification } from '../hooks/usePushNotification';
 import Agendas from '../components/immigration/Agendas';
 import { DoneTab, TodoTab, useImmItems } from '../components/immigration/Items';
-import { BoardingPass, DepartureIntro, VerseCard, nextIntroStyle, pickIntroStyle } from '../components/immigration/Departure';
+import { BoardingPass, DepartureIntro, INTRO_STYLES, SCENES, VerseCard, nextIntroStyle, pickIntroStyle } from '../components/immigration/Departure';
 import { pickVerseIndex } from '../components/immigration/verses';
 import styles from './Immigration.module.css';
 
@@ -86,7 +86,12 @@ export default function Immigration({ user, summary, onChanged }: Props) {
 
   return (
     <div className={styles.layout}>
-      <DepartureIntro key={intro.run} style={intro.style} verseIndex={verse} />
+      <DepartureIntro
+        key={intro.run}
+        style={intro.style}
+        verseIndex={verse}
+        label={intro.run > 0 ? `${INTRO_STYLES.indexOf(intro.style) + 1}/${INTRO_STYLES.length} · ${SCENES[intro.style]?.name}` : undefined}
+      />
       <h1 className={styles.srOnly}>이민</h1>
       <BoardingPass onReplay={replayIntro} />
       <VerseCard index={verse} onChange={setVerse} />

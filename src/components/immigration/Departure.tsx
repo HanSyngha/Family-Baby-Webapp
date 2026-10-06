@@ -3,13 +3,18 @@ import { createPortal } from 'react-dom';
 import { VERSES, loadVerseFont, rememberVerse } from './verses';
 import styles from './Departure.module.css';
 
+import type { SceneSpec } from './intro/types';
+import { PEANUT_SCENES } from './intro/peanut';
+import { GOOGLE_SCENES } from './intro/google';
+import { JOURNEY_SCENES } from './intro/journey';
+import { SKY_SCENES } from './intro/sky';
+import { CHEER_SCENES } from './intro/cheer';
+
 /**
  * 이민 탭의 분위기: 돌아오지 않는 편도 출국.
- *   진입 연출 4가지 중 하나(직전과 다른 것) → 마지막에 말씀 한 구절 → 탭이 열린다.
- *     stamp  여권 사증 면에 붉은 '출국' 도장이 쾅, 장이 넘어감
- *     board  공항 출발 안내판 글자판이 촤라락 → SINGAPORE · 12:55 · ONE WAY
- *     runway 밤 활주로 불빛이 쏟아지다 기수가 들리고 별이 보임
- *     route  인천 → 상하이 → 싱가포르 항로가 그려지고 비행기가 따라감
+ *   진입 연출 21가지 중 하나(직전과 다른 것) → 말씀 한 구절(또는 설이 응원) → 탭이 열린다.
+ *     여기   stamp 출국 도장 · board 출발 안내판 · runway 밤 활주로 · route 항로
+ *     intro/ 땅콩 가족 3 · 구글 2 · 여정 6 · 하늘·위로 6 · 설이 응원 1
  *   탭 머리 — 편도 탑승권(누르면 다음 연출 다시 보기) + 그날의 말씀 카드.
  */
 
@@ -22,15 +27,26 @@ export function daysToDeparture(): number {
   return Math.round((DEPARTURE.getTime() - today.getTime()) / 86400000);
 }
 
-export type IntroStyle = 'stamp' | 'board' | 'runway' | 'route';
-export const INTRO_STYLES: IntroStyle[] = ['stamp', 'board', 'runway', 'route'];
+const NAVY = 'radial-gradient(90% 60% at 50% 42%, rgba(40, 70, 120, 0.35), transparent 70%), #070D18';
 
-const INTRO: Record<IntroStyle, { ms: number; haptic: [number, number | number[]][] }> = {
-  stamp: { ms: 1750, haptic: [[500, 38]] },
-  board: { ms: 1900, haptic: [[200, [6, 45, 6, 45, 6, 45, 6, 45, 6]]] },
-  runway: { ms: 1900, haptic: [[150, [14, 40, 14, 40, 16, 40, 18, 40, 20]], [1050, 30]] },
-  route: { ms: 2050, haptic: [[1180, 22]] },
+const CLASSIC_SCENES: Record<string, SceneSpec> = {
+  stamp: { name: '출국 도장', ms: 1750, haptic: [[500, 38]], caption: 'mid', bg: NAVY, Scene: StampScene },
+  board: { name: '출발 안내판', ms: 1900, haptic: [[200, [6, 45, 6, 45, 6, 45, 6, 45, 6]]], caption: 'late', bg: 'radial-gradient(70% 45% at 50% 30%, rgba(255, 196, 110, 0.10), transparent 70%), #08090B', Scene: BoardScene },
+  runway: { name: '밤 활주로', ms: 1900, haptic: [[150, [14, 40, 14, 40, 16, 40, 18, 40, 20]], [1050, 30]], caption: 'top', bg: '#02040B', Scene: RunwayScene },
+  route: { name: '항로', ms: 2050, haptic: [[1180, 22]], caption: 'late', bg: 'radial-gradient(80% 60% at 60% 40%, rgba(40, 90, 160, 0.30), transparent 70%), #050C19', Scene: RouteScene },
 };
+
+export const SCENES: Record<string, SceneSpec> = {
+  ...CLASSIC_SCENES,
+  ...PEANUT_SCENES,
+  ...GOOGLE_SCENES,
+  ...JOURNEY_SCENES,
+  ...SKY_SCENES,
+  ...CHEER_SCENES,
+};
+
+export type IntroStyle = string;
+export const INTRO_STYLES: IntroStyle[] = Object.keys(SCENES);
 
 const STYLE_KEY = 'immIntro';
 
@@ -38,7 +54,7 @@ const STYLE_KEY = 'immIntro';
 export function pickIntroStyle(): IntroStyle {
   let last = '';
   try { last = localStorage.getItem(STYLE_KEY) ?? ''; } catch { /* 무시 */ }
-  const pool = INTRO_STYLES.filter(s => s !== last);
+  const pool = INTRO_STYLES.filter(st => st !== last);
   const style = pool[Math.floor(Math.random() * pool.length)];
   try { localStorage.setItem(STYLE_KEY, style); } catch { /* 무시 */ }
   return style;
@@ -50,11 +66,20 @@ export function nextIntroStyle(cur: IntroStyle): IntroStyle {
   return style;
 }
 
-export function DepartureIntro({ style, verseIndex }: { style: IntroStyle; verseIndex: number }) {
+const CAPTION_CLASS: Record<string, string | undefined> = {
+  mid: undefined,
+  late: styles.c_late,
+  top: styles.c_top,
+  bottom: styles.c_bottom,
+};
+
+/** label: 탑승권을 눌러 다시 볼 때만 '3/22 · 출발 안내판'처럼 이름을 띄운다 */
+export function DepartureIntro({ style, verseIndex, label }: { style: IntroStyle; verseIndex: number; label?: string }) {
   const [on, setOn] = useState(() => {
     try { return !window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return true; }
   });
-  const { ms, haptic } = INTRO[style];
+  const spec = SCENES[style] ?? SCENES.stamp;
+  const { ms, haptic } = spec;
 
   useEffect(() => { loadVerseFont(); }, []);
 
@@ -71,22 +96,23 @@ export function DepartureIntro({ style, verseIndex }: { style: IntroStyle; verse
 
   if (!on) return null;
   const verse = VERSES[verseIndex];
+  const Scene = spec.Scene;
   return createPortal(
     <div
-      className={`${styles.overlay} ${styles[`o_${style}`]}`}
-      style={{ ['--dur' as string]: `${ms}ms` }}
+      className={styles.overlay}
+      style={{ ['--dur' as string]: `${ms}ms`, background: spec.bg }}
       data-no-tab-swipe
       onClick={() => setOn(false)}
       aria-hidden="true"
     >
-      {style === 'stamp' && <StampScene />}
-      {style === 'board' && <BoardScene />}
-      {style === 'runway' && <RunwayScene />}
-      {style === 'route' && <RouteScene />}
-      <div className={`${styles.caption} ${styles[`c_${style}`]}`}>
-        <p className={styles.captionText}>{verse.short}</p>
-        <p className={styles.captionRef}>{verse.ref}</p>
-      </div>
+      {label && <div className={styles.sceneLabel}>{label}</div>}
+      <Scene />
+      {spec.caption !== 'none' && (
+        <div className={`${styles.caption} ${CAPTION_CLASS[spec.caption] ?? ''}`}>
+          <p className={styles.captionText}>{verse.short}</p>
+          <p className={styles.captionRef}>{verse.ref}</p>
+        </div>
+      )}
     </div>,
     document.body,
   );

@@ -1,0 +1,522 @@
+/* 여정 장면들 — 각 장면의 시간(ms)은 journey.tsx와 맞춘다 */
+
+/* 장면 공통 퇴장: 마지막 15%에 살짝 떠오르며 사라짐 */
+@keyframes stageLife {
+  0%   { opacity: 0; transform: translateY(16px) scale(0.98); }
+  10%  { opacity: 1; transform: none; }
+  84%  { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-18px); }
+}
+
+/* ---------- 창가 일출 (2300ms) ---------- */
+
+.windowWrap {
+  padding: 16px;
+  border-radius: 92px;
+  background: linear-gradient(160deg, #E9E5DD 0%, #C9C3B8 100%);
+  box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.6), inset 0 -6px 12px rgba(0, 0, 0, 0.18), 0 24px 60px rgba(0, 0, 0, 0.6);
+  animation: stageLife 2300ms ease both;
+}
+
+.window {
+  position: relative;
+  width: min(190px, 52vw);
+  aspect-ratio: 19 / 27;
+  border-radius: 78px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.25);
+}
+
+.sky {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #0B1838 0%, #1E3466 55%, #3A4E80 100%);
+  animation: dawn 2300ms ease-in-out both;
+}
+
+@keyframes dawn {
+  0%, 25% { filter: brightness(0.6) saturate(0.8); }
+  70%, 100% { filter: brightness(1.25) saturate(1.2) hue-rotate(-12deg); }
+}
+
+.sun {
+  position: absolute;
+  left: 50%;
+  top: 62%;
+  width: 70px;
+  height: 70px;
+  margin-left: -35px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #FFF2CC 0%, #FFC46E 45%, rgba(255, 140, 60, 0) 72%);
+  box-shadow: 0 0 60px 30px rgba(255, 160, 80, 0.35);
+  animation: sunRise 2300ms cubic-bezier(0.3, 0, 0.2, 1) both;
+}
+
+@keyframes sunRise {
+  0%, 22% { transform: translateY(70px) scale(0.8); opacity: 0.3; }
+  70%     { transform: translateY(-6px) scale(1); opacity: 1; }
+  100%    { transform: translateY(-14px) scale(1.04); opacity: 1; }
+}
+
+.wcloud {
+  position: absolute;
+  height: 26px;
+  border-radius: 20px;
+  background: rgba(255, 236, 220, 0.85);
+  filter: blur(3px);
+}
+
+.wc1 { top: 64%; width: 140px; animation: wdrift 2300ms linear both; }
+.wc2 { top: 76%; width: 200px; animation: wdrift 1600ms linear both; opacity: 0.9; }
+.wc3 { top: 86%; width: 160px; animation: wdrift 1900ms linear both; }
+
+@keyframes wdrift {
+  from { transform: translateX(150px); }
+  to   { transform: translateX(-260px); }
+}
+
+/* 블라인드가 올라가며 시작 */
+.shade {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(180deg, #DCD6CB 0 9px, #CFC8BC 9px 10px);
+  animation: shadeUp 2300ms cubic-bezier(0.6, 0, 0.2, 1) both;
+}
+
+@keyframes shadeUp {
+  0%, 8% { transform: translateY(0); }
+  30%, 100% { transform: translateY(-102%); }
+}
+
+.glass {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.18) 0%, transparent 35%);
+  pointer-events: none;
+}
+
+/* ---------- 여권 표지 (2100ms) ---------- */
+
+.passport {
+  position: relative;
+  width: min(220px, 62vw);
+  aspect-ratio: 22 / 31;
+  animation: stageLife 2100ms ease both;
+}
+
+.inside, .cover {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px 14px 14px 6px;
+}
+
+.inside {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background:
+    repeating-radial-gradient(circle at 50% 115%, rgba(32, 70, 128, 0.07) 0 1px, transparent 1px 8px),
+    linear-gradient(160deg, #F6EFDF 0%, #EEE3CB 100%);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  color: #1C3A6C;
+}
+
+.insideLabel { font-size: 9.5px; font-weight: 800; letter-spacing: 0.2em; opacity: 0.6; }
+.insideCity { font-size: 24px; font-weight: 900; letter-spacing: 0.08em; }
+.insideDate { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; color: #B3262B; }
+.insideFamily { margin-top: 10px; font-size: 11px; font-weight: 700; opacity: 0.7; }
+
+.cover {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 26px 12px 22px;
+  color: #D9B46A;
+  background:
+    radial-gradient(120% 80% at 30% 20%, rgba(255, 255, 255, 0.07), transparent 60%),
+    linear-gradient(160deg, #18315C 0%, #0E1E3B 100%);
+  box-shadow: inset 6px 0 10px -4px rgba(0, 0, 0, 0.5), 0 24px 60px rgba(0, 0, 0, 0.55);
+  transform-origin: left center;
+  backface-visibility: hidden;
+  animation: coverOpen 2100ms cubic-bezier(0.55, 0, 0.25, 1) both;
+}
+
+@keyframes coverOpen {
+  0%, 30% { transform: perspective(1200px) rotateY(0deg); }
+  58%, 100% { transform: perspective(1200px) rotateY(-165deg); }
+}
+
+.coverTop { font-size: 17px; font-weight: 800; letter-spacing: 0.3em; }
+.coverTopEn { font-size: 8.5px; font-weight: 700; letter-spacing: 0.22em; margin-top: 4px; }
+.emblem { width: 44%; margin: auto 0; filter: drop-shadow(0 0 6px rgba(217, 180, 106, 0.4)); }
+.coverBottom { font-size: 15px; font-weight: 800; letter-spacing: 0.4em; }
+.coverBottomEn { font-size: 10px; font-weight: 700; letter-spacing: 0.3em; margin-top: 3px; }
+
+/* ---------- 탑승구 (2000ms) ---------- */
+
+.gateStage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: min(330px, 90vw);
+  animation: stageLife 2000ms ease both;
+}
+
+.sign {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 6px;
+  background: #23262B;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 18px 40px rgba(0, 0, 0, 0.6);
+  color: #FFD200;
+}
+
+.signRow { display: flex; align-items: center; gap: 10px; }
+.signKo { font-size: 28px; font-weight: 900; }
+.signEn { font-size: 20px; font-weight: 700; color: #F2F2F2; }
+
+.signArrow {
+  margin-left: auto;
+  font-size: 30px;
+  font-weight: 900;
+  animation: arrowNudge 2000ms ease-in-out both;
+}
+
+@keyframes arrowNudge {
+  0%, 20%, 40%, 60%, 80%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(6px); }
+}
+
+.signRow2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #F2F2F2;
+}
+
+.nowBoarding {
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: #1E9E5A;
+  color: #fff;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  animation: blinkBoard 2000ms steps(1) both;
+}
+
+@keyframes blinkBoard {
+  0%, 30% { opacity: 0; }
+  31%, 45%, 59%, 73% { opacity: 1; }
+  38%, 52%, 66% { opacity: 0.25; }
+  80%, 100% { opacity: 1; }
+}
+
+/* 바닥 유도 화살표가 탑승구 쪽으로 흐른다 */
+.floorLane {
+  position: relative;
+  width: 70%;
+  height: 120px;
+  transform: perspective(240px) rotateX(55deg);
+  background: linear-gradient(180deg, rgba(255, 210, 0, 0.06), rgba(255, 210, 0, 0.02));
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.floorLane span {
+  position: absolute;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  margin-left: -17px;
+  border-top: 6px solid #FFD200;
+  border-left: 6px solid #FFD200;
+  transform: rotate(45deg);
+  opacity: 0;
+  animation: chevron 900ms linear infinite;
+  animation-delay: calc(var(--i) * 150ms);
+}
+
+@keyframes chevron {
+  0%   { top: 110%; opacity: 0; }
+  20%  { opacity: 0.9; }
+  100% { top: -30%; opacity: 0; }
+}
+
+/* ---------- 수하물 태그 (2100ms) ---------- */
+
+.luggageStage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(300px, 86vw);
+  height: 300px;
+}
+
+.tagSwing {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: 50% 0;
+  animation: tagLife 2100ms cubic-bezier(0.3, 0, 0.2, 1) both;
+}
+
+@keyframes tagLife {
+  0%   { transform: translateX(-50%) translateY(-60vh) rotate(0deg); }
+  20%  { transform: translateX(-50%) translateY(0) rotate(14deg); }
+  30%  { transform: translateX(-50%) rotate(-10deg); }
+  40%  { transform: translateX(-50%) rotate(6deg); }
+  50%  { transform: translateX(-50%) rotate(-2deg); }
+  58%  { transform: translateX(-50%) rotate(0deg); }
+  70%  { transform: translateX(-50%) translateY(40px) rotate(0deg); }
+  100% { transform: translateX(calc(-50% + 90vw)) translateY(40px) rotate(8deg); }
+}
+
+.string { width: 2px; height: 40px; background: #C9A257; }
+
+.bagTag {
+  position: relative;
+  width: 132px;
+  padding: 12px 12px 10px;
+  border-radius: 10px 10px 6px 6px;
+  background: #F6EFDF;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.5);
+  color: #17305A;
+  text-align: center;
+}
+
+.bagTag::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: #0B0F17;
+  box-shadow: inset 0 0 0 2px #C9A257;
+}
+
+.tagHead {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 12px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #6B7A93;
+}
+
+.tagCode {
+  font-size: 46px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  color: #17305A;
+}
+
+.tagName { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; color: #6B7A93; }
+
+.barcode {
+  display: flex;
+  justify-content: center;
+  gap: 1.5px;
+  height: 26px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.barcode i {
+  display: block;
+  height: 100%;
+  background: #17305A;
+  transform-origin: top;
+  animation: print 2100ms steps(8) both;
+}
+
+@keyframes print {
+  0%, 22% { transform: scaleY(0); }
+  40%, 100% { transform: scaleY(1); }
+}
+
+.belt {
+  position: absolute;
+  bottom: 30px;
+  left: -10vw;
+  right: -10vw;
+  display: flex;
+  gap: 4px;
+  height: 18px;
+  padding: 3px;
+  border-radius: 4px;
+  background: #1A1D22;
+  overflow: hidden;
+}
+
+.belt span {
+  flex: 1 0 34px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #3A3F48, #2A2E35);
+  animation: beltMove 2100ms linear both;
+}
+
+@keyframes beltMove {
+  0%, 60% { transform: translateX(0); }
+  100% { transform: translateX(140px); }
+}
+
+/* ---------- 이삿짐 상자 (2100ms) ---------- */
+
+.boxStage {
+  width: min(250px, 70vw);
+  animation: stageLife 2100ms ease both;
+}
+
+.box { display: block; width: 100%; height: auto; overflow: visible; filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.55)); }
+
+.flapL, .flapR {
+  transform-box: view-box;
+  animation-duration: 2100ms;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.3, 1);
+}
+
+/* 날개가 경첩(윗면 모서리) 쪽으로 납작해지며 덮인다 → 테이프 → 도장 '쾅' */
+.flapL { transform-origin: 65px 61px; animation-name: flapL; }
+.flapR { transform-origin: 155px 87px; animation-name: flapR; }
+
+@keyframes flapL {
+  0%, 10% { transform: none; opacity: 1; }
+  22%     { transform: scale(1, 0.15); opacity: 1; }
+  24%, 100% { transform: scale(1, 0); opacity: 0; }
+}
+
+@keyframes flapR {
+  0%, 16% { transform: none; opacity: 1; }
+  28%     { transform: scale(1, 0.15); opacity: 1; }
+  30%, 100% { transform: scale(1, 0); opacity: 0; }
+}
+
+.tape {
+  stroke-dasharray: 140;
+  stroke-dashoffset: 140;
+  animation: tapeRun 2100ms cubic-bezier(0.5, 0, 0.2, 1) both;
+}
+
+@keyframes tapeRun {
+  0%, 30% { stroke-dashoffset: 140; }
+  48%, 100% { stroke-dashoffset: 0; }
+}
+
+.boxStamp {
+  transform-box: view-box;
+  transform-origin: 64px 144px;
+  animation: boxStamp 2100ms cubic-bezier(0.55, 0, 0.75, 0.2) both;
+}
+
+@keyframes boxStamp {
+  0%, 38% { opacity: 0; transform: scale(2.2); }
+  48.5%   { opacity: 0.95; transform: scale(0.94); }
+  52%, 100% { opacity: 0.9; transform: scale(1); }
+}
+
+/* ---------- 달력 (2200ms) ---------- */
+
+.calStage { animation: stageLife 2200ms ease both; }
+
+.cal {
+  position: relative;
+  width: min(210px, 60vw);
+  padding: 16px 16px 18px;
+  border-radius: 14px;
+  background: #F7F3EC;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  text-align: center;
+  color: #23190F;
+}
+
+.cal::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 30%;
+  right: 30%;
+  height: 14px;
+  border-radius: 7px;
+  background: repeating-linear-gradient(90deg, #8A8F99 0 4px, transparent 4px 14px);
+}
+
+.calHead {
+  padding-bottom: 8px;
+  border-bottom: 2px solid #D9473A;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #D9473A;
+}
+
+.calDay {
+  position: relative;
+  font-size: 92px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -2px;
+  font-variant-numeric: tabular-nums;
+  animation: tear 120ms ease-out;
+}
+
+@keyframes tear {
+  from { opacity: 0.2; transform: translateY(-10px) rotateX(40deg); }
+  to   { opacity: 1; transform: none; }
+}
+
+.calDayFinal { color: #D9473A; animation: finalDay 380ms cubic-bezier(0.3, 1.4, 0.5, 1); }
+
+@keyframes finalDay {
+  from { transform: scale(1.25); }
+  to   { transform: scale(1); }
+}
+
+.circle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150px;
+  margin: -60px 0 0 -75px;
+  stroke-dasharray: 330;
+  stroke-dashoffset: 330;
+  animation: circleDraw 500ms ease-out 120ms forwards;
+}
+
+@keyframes circleDraw { to { stroke-dashoffset: 0; } }
+
+.calWd { font-size: 14px; font-weight: 700; color: #6B5D4E; }
+
+.calNote {
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.4em;
+  text-indent: 0.4em;
+  color: #D9473A;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.calNoteOn { opacity: 1; transform: none; }
