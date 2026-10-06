@@ -80,7 +80,7 @@ export async function ensureDerivative(
         await execFileAsync('ffmpeg', ['-y', '-i', originalPath, '-vframes', '1', '-vf', `scale=${width}:-2`, tmpFrame], FF_OPTS);
         await sharp(tmpFrame).webp({ quality: 82, effort: 4 }).toFile(tmp);
       } else {
-        await sharp(originalPath)
+        await sharp(originalPath, { failOn: 'none' }) // processImage와 같은 이유(삼성 SOS 경고 JPEG)
           .rotate()
           .resize(width, width, { fit: 'inside', withoutEnlargement: true })
           .webp({ quality: 82, effort: 4 })

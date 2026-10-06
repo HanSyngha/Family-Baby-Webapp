@@ -41,9 +41,11 @@ export async function processImage(filename: string): Promise<ProcessResult> {
   const originalPath = path.join(DATA_DIR, 'originals', filename);
   const thumbPath = path.join(DATA_DIR, 'thumbnails', filename + '.webp');
 
-  const metadata = await sharp(originalPath).metadata();
+  // failOn 'none': 2017~18 삼성폰 JPEG의 "Invalid SOS parameters" 경고·끝 잘린 파일도 디코드(브라우저는 정상 표시).
+  // 기본값(warning)이면 썸네일 실패 → 큐 FAILED → 사진이 통째로 안 들어감.
+  const metadata = await sharp(originalPath, { failOn: 'none' }).metadata();
 
-  await sharp(originalPath)
+  await sharp(originalPath, { failOn: 'none' })
     .rotate() // EXIF 기반 자동 회전
     .resize(300, 300, { fit: 'inside', withoutEnlargement: true })
     .webp({ quality: 80 })
