@@ -1,12 +1,54 @@
-/* 설이 응원 (3200ms) — 폴라로이드 세 장이 차례로 떨어지고 손글씨 응원 */
+/* 설이가 엄마에게 — 4장면. 시간은 cheer.tsx의 ms와 맞춘다 */
 
 .stage {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 26px;
   width: min(340px, 92vw);
 }
+
+.img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
+.imgOn { opacity: 1; }
+
+/* 손글씨 문구 (공통) */
+.message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.big {
+  font-family: 'Nanum Pen Script', 'Gowun Batang', cursive;
+  font-size: 46px;
+  line-height: 1.1;
+  color: #FFF1E4;
+  text-shadow: 0 0 18px rgba(242, 139, 130, 0.45);
+  word-break: keep-all;
+}
+
+.from {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-family: 'Nanum Pen Script', 'Gowun Batang', cursive;
+  font-size: 26px;
+  color: #F6C7A8;
+}
+
+/* ============ 엄마 힘내세요 — 폴라로이드 (3200ms) ============ */
 
 .photos {
   position: relative;
@@ -28,11 +70,12 @@
   animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1);
 }
 
+.polaroidPhoto { aspect-ratio: 3 / 4; overflow: hidden; background: #E9E2D4; }
+
 .p0 { animation-name: drop0; }
 .p1 { animation-name: drop1; }
 .p2 { animation-name: drop2; }
 
-/* 위에서 떨어져 톡 내려앉고, 부채꼴로 겹친다 */
 @keyframes drop0 {
   0%, 6% { transform: translate(-50%, -70vh) rotate(-24deg); opacity: 0; }
   16%    { transform: translate(-100%, 16px) rotate(-11deg); opacity: 1; }
@@ -57,29 +100,7 @@
   100%    { transform: translate(-50%, 30px) rotate(-2deg) scale(1.04); opacity: 0; }
 }
 
-.photo {
-  aspect-ratio: 3 / 4;
-  overflow: hidden;
-  background: #E9E2D4;
-}
-
-.photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0;
-  transition: opacity 300ms ease;
-}
-
-.photo img.imgOn { opacity: 1; }
-
-.message {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  animation: message 3200ms ease both;
-}
+.messageFight { animation: message 3200ms ease both; }
 
 @keyframes message {
   0%, 38% { opacity: 0; transform: translateY(10px) scale(0.96); }
@@ -88,23 +109,285 @@
   100%    { opacity: 0; }
 }
 
-.big {
-  font-family: 'Nanum Pen Script', 'Gowun Batang', cursive;
-  font-size: 46px;
-  line-height: 1.1;
-  color: #FFF1E4;
-  text-shadow: 0 0 18px rgba(242, 139, 130, 0.45);
+/* ============ 엄마 사랑해요 — 하트 액자 (3200ms) ============ */
+
+.heartFrame {
+  position: relative;
+  width: min(240px, 66vw);
+  aspect-ratio: 100 / 92;
+  animation: heartBeat 3200ms cubic-bezier(0.3, 0, 0.2, 1) both;
 }
 
-.from {
-  display: inline-flex;
+/* 커지며 나타남 → 두 번 두근(진동과 같은 박자) → 사라짐 */
+@keyframes heartBeat {
+  0%   { transform: scale(0.2); opacity: 0; }
+  14%  { transform: scale(1.08); opacity: 1; }
+  20%  { transform: scale(1); }
+  40%  { transform: scale(1); }
+  43%  { transform: scale(1.07); }
+  46%  { transform: scale(1); }
+  49%  { transform: scale(1.05); }
+  52%  { transform: scale(1); }
+  56%  { transform: scale(1); }
+  59%  { transform: scale(1.07); }
+  62%  { transform: scale(1); }
+  65%  { transform: scale(1.05); }
+  68%  { transform: scale(1); }
+  88%  { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.04); opacity: 0; }
+}
+
+.heartPhoto {
+  position: absolute;
+  inset: 0;
+  background: #F3D9D2;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 92'%3E%3Cpath d='M50 90C20 68 3 50 3 30C3 15 15 4 29 4C39 4 46 10 50 18C54 10 61 4 71 4C85 4 97 15 97 30C97 50 80 68 50 90Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 92'%3E%3Cpath d='M50 90C20 68 3 50 3 30C3 15 15 4 29 4C39 4 46 10 50 18C54 10 61 4 71 4C85 4 97 15 97 30C97 50 80 68 50 90Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+.heartLine {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 0 12px rgba(255, 140, 160, 0.75));
+}
+
+.floatHearts {
+  position: absolute;
+  inset: -40px -10px;
+  pointer-events: none;
+}
+
+.floatHearts svg {
+  position: absolute;
+  bottom: 0;
+  left: calc(6% + var(--i) * 10.5%);
+  width: 18px;
+  fill: rgba(255, 140, 160, 0.85);
+  opacity: 0;
+  animation: rise 3200ms ease-out both;
+  animation-delay: calc(500ms + var(--i) * 110ms);
+}
+
+.floatHearts svg:nth-child(3n) { fill: rgba(255, 210, 150, 0.85); width: 13px; }
+.floatHearts svg:nth-child(4n) { width: 24px; }
+
+@keyframes rise {
+  0%   { opacity: 0; transform: translateY(0) rotate(0deg) scale(0.6); }
+  12%  { opacity: 1; }
+  60%  { opacity: 0.8; transform: translateY(-260px) rotate(-14deg) scale(1); }
+  70%, 100% { opacity: 0; transform: translateY(-320px) rotate(10deg) scale(1); }
+}
+
+.messageLove { animation: messageLove 3200ms ease both; }
+
+@keyframes messageLove {
+  0%, 30% { opacity: 0; transform: translateY(10px) scale(0.96); }
+  40%     { opacity: 1; transform: none; }
+  88%     { opacity: 1; }
+  100%    { opacity: 0; }
+}
+
+/* ============ 엄마 할 수 있어요 — 금빛 고리 + 별 (3000ms) ============ */
+
+.canDo {
+  position: relative;
+  width: min(220px, 62vw);
+  aspect-ratio: 1;
+  animation: canDoLife 3000ms cubic-bezier(0.3, 0, 0.2, 1) both;
+}
+
+@keyframes canDoLife {
+  0%   { transform: scale(0.6); opacity: 0; }
+  12%  { transform: scale(1); opacity: 1; }
+  55%  { transform: scale(1); }
+  58%  { transform: scale(1.1); }
+  63%  { transform: scale(0.97); }
+  67%  { transform: scale(1); }
+  88%  { opacity: 1; }
+  100% { transform: scale(1.03); opacity: 0; }
+}
+
+.rays {
+  position: absolute;
+  inset: -45%;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 210, 130, 0.22) 0deg 6deg, transparent 6deg 18deg);
+  -webkit-mask-image: radial-gradient(circle, #000 30%, transparent 70%);
+          mask-image: radial-gradient(circle, #000 30%, transparent 70%);
+  animation: raysSpin 3000ms linear both;
+}
+
+@keyframes raysSpin {
+  0%   { transform: rotate(0deg) scale(0.7); opacity: 0; }
+  20%  { opacity: 0.6; }
+  56%  { transform: rotate(40deg) scale(0.9); opacity: 0.6; }
+  62%  { transform: rotate(48deg) scale(1.2); opacity: 1; }
+  100% { transform: rotate(80deg) scale(1.2); opacity: 0.7; }
+}
+
+/* 힘이 차오르듯 고리가 0→100% 채워진다 */
+@property --fill {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+
+.ring {
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  background: conic-gradient(#FFD27A var(--fill), rgba(255, 210, 122, 0.15) 0);
+  -webkit-mask: radial-gradient(circle, transparent calc(50% - 7px), #000 calc(50% - 6px));
+          mask: radial-gradient(circle, transparent calc(50% - 7px), #000 calc(50% - 6px));
+  filter: drop-shadow(0 0 8px rgba(255, 200, 100, 0.8));
+  animation: ringFill 3000ms cubic-bezier(0.5, 0, 0.3, 1) both;
+}
+
+@keyframes ringFill {
+  0%, 15% { --fill: 0%; }
+  56%, 100% { --fill: 100%; }
+}
+
+.circlePhoto {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #EADFC9;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+}
+
+.burst svg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  fill: #FFD27A;
+  opacity: 0;
+  filter: drop-shadow(0 0 6px rgba(255, 200, 100, 0.9));
+  animation: burst 3000ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.burst svg:nth-child(even) { fill: #FFF1C9; width: 14px; height: 14px; margin: -7px 0 0 -7px; }
+
+@keyframes burst {
+  0%, 56% { opacity: 0; transform: rotate(calc(var(--i) * 36deg)) translateY(0) scale(0.2); }
+  60%     { opacity: 1; }
+  78%     { opacity: 1; transform: rotate(calc(var(--i) * 36deg)) translateY(-150px) scale(1); }
+  92%, 100% { opacity: 0; transform: rotate(calc(var(--i) * 36deg)) translateY(-170px) scale(0.8); }
+}
+
+.messageCanDo .word1,
+.messageCanDo .word2 { display: inline-block; }
+
+.messageCanDo .word1 { animation: wordPop 3000ms cubic-bezier(0.3, 1.5, 0.5, 1) both; animation-delay: 0ms; }
+.messageCanDo .word2 { animation: wordPop2 3000ms cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+
+@keyframes wordPop {
+  0%, 50% { opacity: 0; transform: scale(0.4); }
+  56%     { opacity: 1; transform: scale(1.12); }
+  60%, 88% { opacity: 1; transform: scale(1); }
+  100%    { opacity: 0; }
+}
+
+@keyframes wordPop2 {
+  0%, 57% { opacity: 0; transform: scale(0.4) rotate(-4deg); }
+  63%     { opacity: 1; transform: scale(1.18) rotate(2deg); }
+  67%, 88% { opacity: 1; transform: scale(1) rotate(0); }
+  100%    { opacity: 0; }
+}
+
+.messageCanDo .from { animation: fromIn 3000ms ease both; }
+
+@keyframes fromIn {
+  0%, 64% { opacity: 0; }
+  70%, 88% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ============ 나는 엄마의 모든 모습이 좋아요 — 필름 (3800ms) ============ */
+
+.filmStage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  font-family: 'Nanum Pen Script', 'Gowun Batang', cursive;
-  font-size: 26px;
-  color: #F6C7A8;
+  gap: 30px;
+  width: 100vw;
+}
+
+.film {
+  width: 100%;
+  overflow: hidden;
+  padding: 14px 0;
+  background:
+    repeating-linear-gradient(90deg, #0B0B0D 0 10px, rgba(255, 246, 230, 0.75) 10px 18px, #0B0B0D 18px 28px) top / 100% 8px no-repeat,
+    repeating-linear-gradient(90deg, #0B0B0D 0 10px, rgba(255, 246, 230, 0.75) 10px 18px, #0B0B0D 18px 28px) bottom / 100% 8px no-repeat,
+    #0B0B0D;
+  transform: rotate(-4deg);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  animation: filmIn 3800ms ease both;
+}
+
+@keyframes filmIn {
+  0%   { opacity: 0; transform: rotate(-4deg) translateY(20px); }
+  8%   { opacity: 1; transform: rotate(-4deg); }
+  90%  { opacity: 1; }
+  100% { opacity: 0; transform: rotate(-4deg) translateY(-10px); }
+}
+
+.filmTrack {
+  display: flex;
+  gap: 10px;
+  width: max-content;
+  padding: 0 10px;
+  animation: filmRoll 3800ms linear both;
+}
+
+@keyframes filmRoll {
+  from { transform: translateX(8vw); }
+  to   { transform: translateX(calc(-100% + 92vw)); }
+}
+
+.frame {
+  width: min(118px, 33vw);
+  aspect-ratio: 3 / 4;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #2A2620;
+  filter: sepia(0.15) saturate(1.05);
+}
+
+.messageAll { gap: 0; }
+.messageAll .big { font-size: 42px; }
+.line1 { animation: lineIn 3800ms ease both; }
+.line2 { animation: lineIn2 3800ms ease both; }
+.messageAll .from { animation: fromIn2 3800ms ease both; }
+
+@keyframes lineIn {
+  0%, 18% { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+  28%, 90% { opacity: 1; transform: none; filter: none; }
+  100% { opacity: 0; }
+}
+
+@keyframes lineIn2 {
+  0%, 34% { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+  45%, 90% { opacity: 1; transform: none; filter: none; }
+  100% { opacity: 0; }
+}
+
+@keyframes fromIn2 {
+  0%, 50% { opacity: 0; }
+  58%, 90% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 @media (max-width: 320px) {
   .big { font-size: 38px; }
+  .messageAll .big { font-size: 34px; }
 }

@@ -7,6 +7,7 @@ import Agendas from '../components/immigration/Agendas';
 import { DoneTab, TodoTab, useImmItems } from '../components/immigration/Items';
 import { BoardingPass, DepartureIntro, INTRO_STYLES, SCENES, VerseCard, nextIntroStyle, pickIntroStyle } from '../components/immigration/Departure';
 import { pickVerseIndex } from '../components/immigration/verses';
+import { CHEER_PHOTO_IDS } from '../components/immigration/intro/cheer';
 import styles from './Immigration.module.css';
 
 /**
@@ -78,6 +79,8 @@ export default function Immigration({ user, summary, onChanged }: Props) {
   };
 
   const people = summary?.people ?? [];
+  // 하람이 하트 누른 설이 사진이 4장 이상이면 그걸로, 아니면 기본 사진으로 '엄마' 응원 연출
+  const cheerPhotos = (summary?.cheerPhotoIds?.length ?? 0) >= 4 ? summary!.cheerPhotoIds : CHEER_PHOTO_IDS;
   const counts: Record<SubTab, number> = {
     agenda: summary?.pendingVotes ?? 0,
     todo: items.data?.todo.length ?? 0,
@@ -90,6 +93,7 @@ export default function Immigration({ user, summary, onChanged }: Props) {
         key={intro.run}
         style={intro.style}
         verseIndex={verse}
+        photos={cheerPhotos}
         label={intro.run > 0 ? `${INTRO_STYLES.indexOf(intro.style) + 1}/${INTRO_STYLES.length} · ${SCENES[intro.style]?.name}` : undefined}
       />
       <h1 className={styles.srOnly}>이민</h1>

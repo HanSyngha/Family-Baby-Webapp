@@ -13,6 +13,11 @@ export type Haptic = [number, number | number[]][];
  */
 export type CaptionMode = 'mid' | 'late' | 'top' | 'bottom' | 'none';
 
+export interface SceneProps {
+  /** 설이 응원 연출에 쓸 갤러리 사진 id (하람이 하트 누른 것, 적으면 기본 사진) */
+  photos: number[];
+}
+
 export interface SceneSpec {
   /** 사람이 읽는 이름 (탑승권을 눌러 다시 볼 때 안내용) */
   name: string;
@@ -21,5 +26,5 @@ export interface SceneSpec {
   caption: CaptionMode;
   /** 오버레이 배경 (CSS background 값) */
   bg: string;
-  Scene: () => ReactElement;
+  Scene: (props: SceneProps) => ReactElement;
 }

@@ -20,6 +20,7 @@ const PHOTO_DIR = path.resolve('data', 'immigration');
 fs.mkdirSync(PHOTO_DIR, { recursive: true });
 
 const FULL_PX = 2048;   // 서류 사진 글자가 읽히는 크기
+const HARAM_ID = 3;     // 황하람 — 설이 응원 연출은 하람이 하트 누른 사진을 쓴다
 const THUMB_PX = 400;
 const MAX_PHOTOS = 20;
 
@@ -156,7 +157,7 @@ function parseAssignee(v: unknown): number | null {
 export function registerImmigrationRoutes(app: FastifyInstance) {
   startImmigrationScheduler(removePhotoFiles);
 
-  // 탭 표시 여부 + 배지(내가 아직 안 누른 안건 수) + 두 사람 정보
+  // 탭 표시 여부 + 배지(내가 아직 안 누른 안건 수) + 두 사람 정보 + 설이 응원 사진
   app.get('/api/immigration/summary', guard, async (request) => {
     const userId = me(request);
     const people = db.prepare(`SELECT id, name, profileImage FROM users WHERE id IN (${IMMIGRATION_USER_IDS.map(() => '?').join(',')}) ORDER BY id`)
@@ -165,7 +166,16 @@ export function registerImmigrationRoutes(app: FastifyInstance) {
       SELECT COUNT(*) n FROM imm_agendas a
       WHERE a.confirmedAt IS NULL AND NOT EXISTS (SELECT 1 FROM imm_votes v WHERE v.agendaId = a.id AND v.userId = ?)
     `).get(userId) as { n: number }).n;
-    return { people, pendingVotes };
+    // 하람이 갤러리에서 하트(좋아요) 누른 공유 사진 중 설이가 태어난 뒤의 것. 적으면 클라가 고른 기본 사진을 쓴다.
+    // 공유(visibility='shared')만 — 개인공간 사진은 상대 계정에서 404가 난다.
+    const cheerPhotoIds = (db.prepare(`
+      SELECT m.id FROM likes l JOIN media m ON m.id = l.mediaId
+      WHERE l.userId = ? AND m.type = 'image' AND m.visibility = 'shared'
+        AND COALESCE(m.takenAt, m.createdAt) >= '2026-02-19'
+      ORDER BY l.createdAt DESC
+      LIMIT 40
+    `).all(HARAM_ID) as { id: number }[]).map(r => r.id);
+    return { people, pendingVotes, cheerPhotoIds };
   });
 
   // ---------- 사진 ----------

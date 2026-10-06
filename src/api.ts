@@ -1006,6 +1006,8 @@ export interface ImmPerson {
 export interface ImmSummary {
   people: ImmPerson[];
   pendingVotes: number;
+  /** 하람이 하트 누른 설이 사진 (설이 응원 연출용) */
+  cheerPhotoIds: number[];
 }
 
 export interface ImmPhoto {

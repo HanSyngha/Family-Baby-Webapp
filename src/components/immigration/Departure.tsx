@@ -74,7 +74,7 @@ const CAPTION_CLASS: Record<string, string | undefined> = {
 };
 
 /** label: 탑승권을 눌러 다시 볼 때만 '3/22 · 출발 안내판'처럼 이름을 띄운다 */
-export function DepartureIntro({ style, verseIndex, label }: { style: IntroStyle; verseIndex: number; label?: string }) {
+export function DepartureIntro({ style, verseIndex, label, photos }: { style: IntroStyle; verseIndex: number; label?: string; photos: number[] }) {
   const [on, setOn] = useState(() => {
     try { return !window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return true; }
   });
@@ -106,7 +106,7 @@ export function DepartureIntro({ style, verseIndex, label }: { style: IntroStyle
       aria-hidden="true"
     >
       {label && <div className={styles.sceneLabel}>{label}</div>}
-      <Scene />
+      <Scene photos={photos} />
       {spec.caption !== 'none' && (
         <div className={`${styles.caption} ${CAPTION_CLASS[spec.caption] ?? ''}`}>
           <p className={styles.captionText}>{verse.short}</p>
