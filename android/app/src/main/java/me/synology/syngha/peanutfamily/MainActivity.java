@@ -32,7 +32,9 @@ public class MainActivity extends BridgeActivity {
         //   그래서 뒤로를 누르면 앱이 바로 꺼졌다. OnBackPressedDispatcher 콜백은 예측형 뒤로가기에서도 불린다.
         // - WebView.canGoBack()/copyBackForwardList()는 SPA가 pushState로 쌓은 기록을 모른다
         //   (Android 16 에뮬레이터 실측: 홈→생활 탭 이동 후 size=1, canGoBack=false). 그래서 페이지에 묻는다:
-        //   라우터가 쌓은 기록(idx>0)이나 창(modal·immSheet)이 있으면 history.back(), 없으면 앱 종료.
+        //   라우터가 쌓은 기록(idx>0)이나 창(modal·immSheet)이 있으면 history.back().
+        // - 문서 간 이동(콩땅 → 친척앱 2280, 카카오·네이버 로그인)은 새 문서의 idx가 0이라 페이지는 '없음'이라 한다.
+        //   이건 WebView 기록이 정확히 알므로, 이전 문서가 우리 사이트(로그인·콜백 제외)면 goBack(), 아니면 종료.
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -46,6 +48,7 @@ public class MainActivity extends BridgeActivity {
                     "(function(){ var s = history.state || {}; return !!(s.idx > 0 || s.modal || s.immSheet); })()",
                     canGoBack -> {
                         if ("true".equals(canGoBack)) wv.evaluateJavascript("history.back()", null);
+                        else if (previousIsOurPage(wv)) wv.goBack();
                         else exitApp(self);
                     });
             }
@@ -101,6 +104,20 @@ public class MainActivity extends BridgeActivity {
                 Toast.makeText(this, "다운로드를 시작하지 못했어요", Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    // WebView 기록의 바로 전 문서가 우리 사이트(가족·친척앱)인가. 로그인 화면·OAuth 콜백으로는 돌아가지 않는다
+    // (홈에서 뒤로를 눌렀더니 카카오 로그인이 다시 뜨는 일을 막는다).
+    private boolean previousIsOurPage(WebView wv) {
+        if (!wv.canGoBack()) return false;
+        android.webkit.WebBackForwardList list = wv.copyBackForwardList();
+        int i = list.getCurrentIndex() - 1;
+        if (i < 0) return false;
+        String prev = list.getItemAtIndex(i).getUrl();
+        return prev != null
+            && prev.startsWith("https://syngha.synology.me")
+            && !prev.contains("/login")
+            && !prev.contains("/api/auth/");
     }
 
     // 뒤로 갈 곳이 없을 때: 콜백을 잠시 끄고 기본 동작(액티비티 종료)에 맡긴다
