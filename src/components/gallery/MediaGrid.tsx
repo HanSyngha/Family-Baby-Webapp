@@ -114,12 +114,13 @@ export default function MediaGrid({ items, onItemClick, onLoadMore, hasMore, onL
   const loadNewerRef = useRef(onLoadNewer);
   loadNewerRef.current = onLoadNewer;
 
-  // 위쪽 센티넬: 스크롤 부모를 root로 잡아야 rootMargin이 먹어 맨 위에 닿기 전에 미리 불러온다
+  // 위쪽 센티넬: 실제로 스크롤되는 부모를 root로 잡아야 rootMargin이 먹어 맨 위에 닿기 전에 미리 불러온다.
+  // overflow:auto여도 높이 제한이 없으면(문서 전체가 스크롤) 센티넬이 늘 '보임'이라 끝없이 불러오므로 건너뛴다 → 없으면 뷰포트.
   useEffect(() => {
     const target = topSentinelRef.current;
     if (!hasNewer || !target) return;
     let root = target.parentElement;
-    while (root && !/(auto|scroll)/.test(getComputedStyle(root).overflowY)) root = root.parentElement;
+    while (root && !(/(auto|scroll)/.test(getComputedStyle(root).overflowY) && root.scrollHeight > root.clientHeight)) root = root.parentElement;
     const obs = new IntersectionObserver(([e]) => {
       if (e.isIntersecting) loadNewerRef.current?.();
     }, { root, rootMargin: '800px 0px 0px 0px' });

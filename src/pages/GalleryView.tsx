@@ -201,7 +201,11 @@ export default function GalleryView({ user, scope, embedded, babyBirth }: Props)
     const a = prependAnchorRef.current;
     if (!a) return;
     prependAnchorRef.current = null;
+    // html { scroll-behavior: smooth }면 보정까지 애니메이션돼 화면이 내려갔다 미끄러져 온다 → 이 순간만 즉시 이동
+    const prev = a.el.style.scrollBehavior;
+    a.el.style.scrollBehavior = 'auto';
     a.el.scrollTop = a.top + (a.el.scrollHeight - a.height);
+    a.el.style.scrollBehavior = prev;
   }, [items]);
 
   const itemsRef = useRef(items);
