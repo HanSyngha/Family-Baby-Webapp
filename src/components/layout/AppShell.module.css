@@ -319,7 +319,67 @@
   text-decoration: none;
 }
 
-/* 탭이 7칸(홈·갤러리·여행·육아·생활·설정·콩땅)이라 좁은 화면에선 아이콘/글자를 줄인다 */
+/* 이민 탭에 있는 동안: 껍데기(배경·탭바·사이드바)도 '밤의 출국장'으로 */
+.shellImm { background: #070D18; }
+
+.shellImm .bottomTab {
+  background: rgba(7, 13, 24, 0.9);
+  border-top-color: rgba(227, 194, 126, 0.16);
+}
+
+.shellImm .tabItem { color: rgba(241, 232, 216, 0.42); }
+.shellImm .tabItemActive { color: #E3C27E; }
+.shellImm .tabItem::before { background: #E3C27E; box-shadow: 0 0 8px rgba(227, 194, 126, 0.6); }
+.shellImm .tabBadge { box-shadow: 0 0 0 2px #070D18; }
+
+.shellImm .sidebar {
+  background: #0B1528;
+  border-right-color: rgba(227, 194, 126, 0.14);
+}
+
+.shellImm .logo,
+.shellImm .userName { color: #F1E8D8; }
+.shellImm .navItem { color: rgba(241, 232, 216, 0.55); }
+.shellImm .navItem:hover { background: rgba(255, 255, 255, 0.04); color: #F1E8D8; }
+.shellImm .navItemActive { background: rgba(227, 194, 126, 0.12); color: #E3C27E; }
+.shellImm .sidebarHeader,
+.shellImm .sidebarFooter { border-color: rgba(227, 194, 126, 0.14); }
+
+.shellImm .installBanner {
+  background: #0B1528;
+  border-bottom-color: rgba(227, 194, 126, 0.14);
+  color: rgba(241, 232, 216, 0.7);
+}
+
+/* 이민 탭: 내가 아직 찬성/반대를 안 누른 안건 수 */
+.tabBadge,
+.navBadge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--color-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700 !important;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabBadge {
+  position: absolute;
+  top: 3px;
+  left: calc(50% + 4px);
+  box-shadow: 0 0 0 2px var(--color-surface);
+  animation: scaleIn var(--dur-fast) var(--ease-spring);
+}
+
+.navBadge {
+  margin-left: auto;
+}
+
+/* 탭이 7칸(홈·갤러리·이민·육아·생활·설정·콩땅)이라 좁은 화면에선 아이콘/글자를 줄인다 */
 @media (max-width: 380px) {
   .tabItem {
     font-size: 9.5px;

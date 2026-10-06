@@ -70,6 +70,29 @@ export function sendPushToAll(title: string, body: string, url = '/') {
   }
 }
 
+// 한 사람에게만 알림 전송 (이민 탭처럼 다른 사람에게 새면 안 되는 알림용).
+// 구독이 만료(404/410)된 것만 지운다 — 일시적 네트워크 오류로 구독을 잃지 않게.
+export async function sendPushToUser(userId: number, title: string, body: string, url = '/', tag = 'notification') {
+  if (!VAPID_PUBLIC || !VAPID_PRIVATE) return { sent: 0, failed: 0, subs: 0 };
+
+  const subs = db.prepare('SELECT id, endpoint, keys FROM push_subscriptions WHERE userId = ?').all(userId) as any[];
+  let sent = 0;
+  let failed = 0;
+  await Promise.all(subs.map(async (sub) => {
+    try {
+      await webPush.sendNotification({ endpoint: sub.endpoint, keys: JSON.parse(sub.keys) }, JSON.stringify({ title, body, url, tag }));
+      sent++;
+    } catch (err: any) {
+      failed++;
+      console.warn(`[Push] user=${userId} sub=${sub.id} 실패 status=${err?.statusCode ?? '?'}`);
+      if (err?.statusCode === 404 || err?.statusCode === 410) {
+        db.prepare('DELETE FROM push_subscriptions WHERE id = ?').run(sub.id);
+      }
+    }
+  }));
+  return { sent, failed, subs: subs.length };
+}
+
 // 유저 이름 조회 헬퍼
 export function getUserName(userId: number): string {
   const user = db.prepare('SELECT name FROM users WHERE id = ?').get(userId) as { name: string } | undefined;

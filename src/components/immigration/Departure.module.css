@@ -1,0 +1,674 @@
+/* ============================================================
+   이민 — 출국 도장 연출 · 편도 탑승권 · 말씀 카드
+   여권 남색 + 사증 면 크림 + 도장 인주 빨강. 말씀은 명조(고운바탕).
+   ============================================================ */
+
+/* ---------- 진입 연출 (1.75s) ----------
+   0.00  화면이 여권 남색 밤으로 어두워짐
+   0.06  사증 면이 올라옴
+   0.26  도장이 위에서 내려와 0.50에 '쾅' (화면 흔들림 · 진동 · 잉크 번짐)
+   0.62  말씀 한 구절
+   1.35  장이 왼쪽 끝을 축으로 넘어가며 탭이 드러남 */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 24px;
+  background:
+    radial-gradient(90% 60% at 50% 42%, rgba(40, 70, 120, 0.35), transparent 70%),
+    #070D18;
+  animation: overlayLife var(--dur, 1750ms) ease both;
+  cursor: pointer;
+}
+
+@keyframes overlayLife {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  82%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.stage {
+  animation: shake 1750ms linear both;
+}
+
+/* 도장이 찍히는 순간(≈0.50s) 종이가 짧게 흔들린다 */
+@keyframes shake {
+  0%, 28.4% { transform: none; }
+  29.5%     { transform: translate(-3px, 3px) rotate(-0.4deg); }
+  31%       { transform: translate(3px, -2px) rotate(0.3deg); }
+  32.5%     { transform: translate(-1px, 1px); }
+  34%, 100% { transform: none; }
+}
+
+.page {
+  position: relative;
+  width: min(250px, 70vw);
+  aspect-ratio: 5 / 7;
+  border-radius: 6px 12px 12px 6px;
+  background:
+    repeating-radial-gradient(circle at 50% 115%, rgba(32, 70, 128, 0.07) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(115deg, rgba(32, 70, 128, 0.045) 0 1px, transparent 1px 11px),
+    linear-gradient(160deg, #F6EFDF 0%, #EEE3CB 100%);
+  box-shadow:
+    inset 10px 0 18px -12px rgba(60, 40, 10, 0.45),   /* 제본 쪽 그림자 */
+    0 24px 60px rgba(0, 0, 0, 0.55);
+  transform-origin: left center;
+  animation: pageLife 1750ms cubic-bezier(0.3, 0, 0.2, 1) both;
+  backface-visibility: hidden;
+}
+
+/* 넘김은 perspective()를 transform 안에 둔다 — 부모(.stage)가 흔들림 transform을 가져 3D 문맥이 끊기므로 */
+@keyframes pageLife {
+  0%    { opacity: 0; transform: perspective(1400px) translateY(28px) scale(0.96) rotateY(0deg); }
+  16%   { opacity: 1; transform: perspective(1400px) translateY(0) scale(1) rotateY(0deg); }
+  77%   { opacity: 1; transform: perspective(1400px) translateY(0) scale(1) rotateY(0deg); }
+  97%   { opacity: 0.2; transform: perspective(1400px) translateY(0) scale(1) rotateY(-100deg); }
+  100%  { opacity: 0; transform: perspective(1400px) translateY(0) scale(1) rotateY(-100deg); }
+}
+
+.pageHead {
+  position: absolute;
+  top: 14px;
+  left: 18px;
+  right: 18px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  color: rgba(28, 58, 108, 0.55);
+}
+
+.pageNo {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(28, 58, 108, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.pastStamp {
+  position: absolute;
+  left: 10%;
+  bottom: 9%;
+  width: 34%;
+  color: rgba(28, 72, 150, 0.2);
+  transform: rotate(14deg);
+}
+
+.stampWrap {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 82%;
+  transform: translate(-50%, -50%) rotate(-9deg);
+}
+
+.stamp {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: #B3262B;
+  mix-blend-mode: multiply;
+  animation: stampDown 1750ms cubic-bezier(0.55, 0, 0.75, 0.2) both;
+}
+
+/* 위에서 크게(가까이) 내려와 찍히고, 반동 없이 박힌다 */
+@keyframes stampDown {
+  0%, 14.8% { opacity: 0; transform: scale(2.3); filter: blur(5px); }
+  20%       { opacity: 0.35; }
+  28.6%     { opacity: 0.95; transform: scale(0.95); filter: blur(0); }
+  31.5%     { transform: scale(1); }
+  100%      { opacity: 0.92; transform: scale(1); }
+}
+
+.inkBloom {
+  position: absolute;
+  inset: -12%;
+  border-radius: 30%;
+  background: radial-gradient(closest-side, rgba(179, 38, 43, 0.22), transparent 70%);
+  mix-blend-mode: multiply;
+  opacity: 0;
+  animation: bloom 1750ms ease-out both;
+}
+
+@keyframes bloom {
+  0%, 28.4% { opacity: 0; transform: scale(0.7); }
+  31%       { opacity: 1; }
+  45%       { opacity: 0; transform: scale(1.25); }
+  100%      { opacity: 0; }
+}
+
+.caption {
+  position: relative;
+  z-index: 2;
+  max-width: 320px;
+  text-align: center;
+  animation: captionLife var(--dur, 1750ms) ease both;
+}
+
+@keyframes captionLife {
+  0%, 35%  { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+  46%      { opacity: 1; transform: none; filter: blur(0); }
+  80%      { opacity: 1; }
+  96%,100% { opacity: 0; }
+}
+
+/* 나머지 연출은 장면이 끝난 뒤(≈58~62%)에 말씀이 뜬다 */
+.c_board, .c_route { animation-name: captionLate; }
+
+@keyframes captionLate {
+  0%, 56%  { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+  66%      { opacity: 1; transform: none; filter: blur(0); }
+  86%      { opacity: 1; }
+  97%,100% { opacity: 0; }
+}
+
+/* 활주로: 이륙해 별이 뜬 하늘 위에 */
+.c_runway {
+  position: absolute;
+  top: 30%;
+  left: 24px;
+  right: 24px;
+  margin: 0 auto;
+  animation-name: captionSky;
+}
+
+@keyframes captionSky {
+  0%, 60%  { opacity: 0; transform: translateY(14px); filter: blur(5px); }
+  72%      { opacity: 1; transform: none; filter: blur(0); }
+  88%      { opacity: 1; }
+  98%,100% { opacity: 0; }
+}
+
+/* ---------- 연출별 배경 ---------- */
+
+.o_board {
+  background:
+    radial-gradient(70% 45% at 50% 30%, rgba(255, 196, 110, 0.10), transparent 70%),
+    #08090B;
+}
+
+.o_runway { background: #02040B; padding: 0; }
+
+.o_route {
+  background:
+    radial-gradient(80% 60% at 60% 40%, rgba(40, 90, 160, 0.30), transparent 70%),
+    #050C19;
+}
+
+/* ---------- 2) 출발 안내판 ---------- */
+
+.board {
+  --cell: min(22px, calc((88vw - 92px) / 11));
+  width: min(340px, 92vw);
+  padding: 14px 12px 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #17191D 0%, #0E0F12 100%);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  animation: boardLife var(--dur, 1900ms) cubic-bezier(0.3, 0, 0.2, 1) both;
+}
+
+@keyframes boardLife {
+  0%   { opacity: 0; transform: translateY(18px); }
+  10%  { opacity: 1; transform: none; }
+  84%  { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-24px); }
+}
+
+.boardHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 4px 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 196, 110, 0.18);
+}
+
+.boardTitle {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: #FFC46E;
+}
+
+.boardKo { font-size: 12px; font-weight: 700; color: rgba(255, 196, 110, 0.6); }
+
+.boardRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 4px;
+}
+
+.boardLabel {
+  width: 52px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.15;
+}
+
+.boardLabel i {
+  font-style: normal;
+  font-size: 9.5px;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.flaps { display: flex; gap: 2px; }
+
+.flap {
+  position: relative;
+  width: var(--cell);
+  height: calc(var(--cell) * 1.36);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #26292F 0%, #1F2227 49%, #15171B 51%, #1B1E22 100%);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+/* 판의 가운데 접히는 선 */
+.flap::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.flapChar {
+  font-family: 'SF Mono', 'Roboto Mono', ui-monospace, Menlo, monospace;
+  font-size: calc(var(--cell) * 0.82);
+  font-weight: 700;
+  color: #F2EEE6;
+  animation: flapDrop 70ms ease-out;
+}
+
+@keyframes flapDrop {
+  from { transform: perspective(80px) rotateX(-75deg); opacity: 0.4; }
+  to   { transform: none; opacity: 1; }
+}
+
+.boardRowLit .flapChar {
+  color: #FFC46E;
+  text-shadow: 0 0 10px rgba(255, 196, 110, 0.6);
+  transition: color 200ms;
+}
+
+/* ---------- 3) 활주로 ---------- */
+
+.runwayCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- 4) 항로 ---------- */
+
+.routeBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  animation: boardLife var(--dur, 2050ms) cubic-bezier(0.3, 0, 0.2, 1) both;
+}
+
+.routeMap {
+  width: min(300px, 80vw);
+  height: auto;
+  overflow: visible;
+}
+
+.graticule line {
+  stroke: rgba(140, 180, 240, 0.12);
+  stroke-width: 0.8;
+  stroke-dasharray: 2 4;
+}
+
+.routeTrail {
+  fill: none;
+  stroke: rgba(227, 194, 126, 0.16);
+  stroke-width: 1.4;
+  stroke-dasharray: 3 5;
+}
+
+.routeLine {
+  fill: none;
+  stroke: #E3C27E;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  filter: drop-shadow(0 0 4px rgba(227, 194, 126, 0.7));
+  /* 비행기(JS)와 같은 0.30s 시작 · 0.88s 동안 · easeInOutCubic */
+  animation: routeDraw 880ms cubic-bezier(0.65, 0, 0.35, 1) 300ms forwards;
+}
+
+@keyframes routeDraw { to { stroke-dashoffset: 0; } }
+
+.routePort { opacity: 0.25; transition: opacity 250ms; }
+.portOn { opacity: 1; }
+
+.portDot { fill: #0B1730; stroke: #E3C27E; stroke-width: 2; }
+.portOn .portDot { fill: #E3C27E; }
+
+.portPulse {
+  fill: none;
+  stroke: #E3C27E;
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: portPulse 900ms ease-out forwards;
+}
+
+@keyframes portPulse {
+  from { transform: scale(1); opacity: 0.9; }
+  to   { transform: scale(5); opacity: 0; }
+}
+
+.portLabel {
+  font-size: 12px;
+  font-weight: 700;
+  fill: #F4EAD7;
+}
+
+.portCode {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  fill: rgba(227, 194, 126, 0.85);
+}
+
+.routePlane {
+  fill: #FFF7EA;
+  filter: drop-shadow(0 0 5px rgba(255, 247, 234, 0.9));
+}
+
+.routeCoord {
+  font-family: 'SF Mono', 'Roboto Mono', ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: rgba(140, 180, 240, 0.75);
+  font-variant-numeric: tabular-nums;
+}
+
+.captionText {
+  font-family: 'Gowun Batang', 'Noto Serif KR', 'Nanum Myeongjo', serif;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #F4EAD7;
+  letter-spacing: 0.02em;
+  word-break: keep-all;
+}
+
+.captionRef {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(227, 194, 126, 0.85);
+}
+
+/* ---------- 편도 탑승권 ---------- */
+
+.pass {
+  --stub: 92px;
+  position: relative;
+  display: flex;
+  width: calc(100% - 40px);
+  margin: 14px 20px 0;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dur-fast) var(--ease-out);
+  border-radius: 18px;
+  color: #F4EAD7;
+  background:
+    repeating-radial-gradient(circle at 0% 120%, rgba(227, 194, 126, 0.05) 0 1px, transparent 1px 9px),
+    linear-gradient(150deg, #17305A 0%, #0D1B33 100%);
+  box-shadow: inset 0 0 0 1px rgba(227, 194, 126, 0.22), 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 40px rgba(46, 82, 140, 0.25);
+  /* 절취선 양 끝의 반달 홈 */
+  -webkit-mask:
+    radial-gradient(circle 9px at calc(100% - var(--stub)) 0, transparent 97%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle 9px at calc(100% - var(--stub)) 100%, transparent 97%, #000) bottom / 100% 51% no-repeat;
+          mask:
+    radial-gradient(circle 9px at calc(100% - var(--stub)) 0, transparent 97%, #000) top / 100% 51% no-repeat,
+    radial-gradient(circle 9px at calc(100% - var(--stub)) 100%, transparent 97%, #000) bottom / 100% 51% no-repeat;
+}
+
+.passMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 14px 14px 18px;
+}
+
+.passTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.oneWay {
+  letter-spacing: 0.16em;
+  color: #E3C27E;
+  white-space: nowrap;
+}
+
+.passDate {
+  color: rgba(244, 234, 215, 0.7);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.port { display: flex; flex-direction: column; min-width: 0; }
+.portEnd { align-items: flex-end; text-align: right; }
+
+.code {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  color: #FFF7EA;
+}
+
+.portSub {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(244, 234, 215, 0.66);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 두 공항 사이 점선 위 비행기 */
+.flightPath {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  margin-bottom: 16px;
+  color: #E3C27E;
+}
+
+.flightPath::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1.5px dashed rgba(227, 194, 126, 0.45);
+}
+
+.flightPath svg {
+  position: relative;
+  padding: 0 4px;
+  background: transparent;
+  filter: drop-shadow(0 0 4px rgba(227, 194, 126, 0.4));
+}
+
+.passMeta {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(244, 234, 215, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stub {
+  width: var(--stub);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-left: 1.5px dashed rgba(227, 194, 126, 0.35);
+}
+
+.dNum {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, #F3DDA6 0%, #D9AE5C 100%);
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+}
+
+.dLabel {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: rgba(244, 234, 215, 0.55);
+  letter-spacing: 0.06em;
+}
+
+.pass:active { transform: scale(0.985); }
+
+/* ---------- 말씀 카드 ---------- */
+
+.verse {
+  display: block;
+  width: calc(100% - 40px);
+  margin: 10px 20px 0;
+  padding: 14px 16px 12px 18px;
+  text-align: left;
+  border-radius: 16px;
+  background: #FBF7EF;
+  border: 1px solid #EDE2CD;
+  box-shadow: inset 3px 0 0 #D9B46A, 0 14px 36px rgba(0, 0, 0, 0.45), 0 0 30px rgba(227, 194, 126, 0.08);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.verse:active { background: #F6EFE2; }
+
+.verseInner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: verseIn 420ms var(--ease-out);
+}
+
+@keyframes verseIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.verseText {
+  font-family: 'Gowun Batang', 'Noto Serif KR', 'Nanum Myeongjo', serif;
+  font-size: 15px;
+  line-height: 1.75;
+  color: #3A2E22;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.verseFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.verseRef {
+  font-family: 'Gowun Batang', 'Noto Serif KR', serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #9A7637;
+}
+
+.verseNext {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+}
+
+.verseNext::after { content: ' ›'; }
+
+/* ---------- 반응형 ---------- */
+
+@media (max-width: 380px) {
+  .pass { width: calc(100% - 32px); margin: 12px 16px 0; }
+  .verse { width: calc(100% - 32px); margin: 10px 16px 0; }
+}
+
+/* Galaxy Fold 접힌 상태 */
+@media (max-width: 320px) {
+  .pass { --stub: 66px; width: calc(100% - 24px); margin: 10px 12px 0; border-radius: 14px; }
+  .passMain { padding: 12px 10px 12px 12px; gap: 6px; }
+  .code { font-size: 22px; }
+  .portSub, .passMeta { font-size: 10.5px; }
+  .flightPath { margin-bottom: 12px; }
+  .flightPath svg { width: 16px; height: 16px; }
+  .oneWay { letter-spacing: 0.08em; }
+  .dNum { font-size: 18px; }
+  .verse { width: calc(100% - 24px); margin: 8px 12px 0; padding: 12px 12px 10px 14px; }
+  .verseText { font-size: 14px; }
+  .captionText { font-size: 17px; }
+}
+
+@media (min-width: 768px) {
+  .pass { max-width: 720px; width: calc(100% - 40px); margin: 20px auto 0; }
+  .verse { max-width: 720px; margin: 10px auto 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .verseInner { animation: none; }
+}

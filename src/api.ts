@@ -949,6 +949,32 @@ export const api = {
   clearChat: (babyId: number) =>
     request<{ ok: boolean }>(`/baby/${babyId}/chat`, { method: 'DELETE' }),
 
+  // 이민 탭 (승하·하람 둘만 — 다른 계정은 403)
+  getImmigrationSummary: () => request<ImmSummary>('/immigration/summary'),
+  uploadImmPhoto: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return request<ImmPhoto>('/immigration/photos', { method: 'POST', body: form });
+  },
+  getImmAgendas: () => request<{ agendas: ImmAgenda[] }>('/immigration/agendas'),
+  getImmAgenda: (id: number) => request<{ agenda: ImmAgenda; comments: ImmComment[] }>(`/immigration/agendas/${id}`),
+  createImmAgenda: (data: { title: string; body: string; photoIds: number[] }) =>
+    request<ImmAgenda>('/immigration/agendas', { method: 'POST', body: JSON.stringify(data) }),
+  updateImmAgenda: (id: number, data: { title: string; body: string; photoIds: number[]; removePhotoIds: number[] }) =>
+    request<ImmAgenda>(`/immigration/agendas/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteImmAgenda: (id: number) => request<{ ok: boolean }>(`/immigration/agendas/${id}`, { method: 'DELETE' }),
+  voteImmAgenda: (id: number, value: ImmVote | null) =>
+    request<ImmAgenda>(`/immigration/agendas/${id}/vote`, { method: 'PUT', body: JSON.stringify({ value }) }),
+  addImmComment: (agendaId: number, data: { kind: ImmCommentKind; body: string; photoIds: number[] }) =>
+    request<{ ok: boolean; id: number }>(`/immigration/agendas/${agendaId}/comments`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteImmComment: (id: number) => request<{ ok: boolean }>(`/immigration/comments/${id}`, { method: 'DELETE' }),
+  getImmItems: () => request<{ todo: ImmItem[]; done: ImmItem[] }>('/immigration/items'),
+  createImmItem: (data: Partial<Pick<ImmItem, 'title' | 'memo' | 'dueDate' | 'assigneeId' | 'status' | 'doneDate'>>) =>
+    request<ImmItem>('/immigration/items', { method: 'POST', body: JSON.stringify(data) }),
+  updateImmItem: (id: number, data: Partial<Pick<ImmItem, 'title' | 'memo' | 'dueDate' | 'assigneeId' | 'status' | 'doneDate'>>) =>
+    request<ImmItem>(`/immigration/items/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteImmItem: (id: number) => request<{ ok: boolean }>(`/immigration/items/${id}`, { method: 'DELETE' }),
+
   // Media URLs
   // w: 640 | 1280 → 서버가 원본에서 파생본을 만들어 캐시해 돌려준다. 생략하면 기존 300px.
   thumbUrl: (id: number, v?: string, w?: 640 | 1280 | 2048) => {
@@ -962,3 +988,69 @@ export const api = {
   hlsUrl: (id: number) => `${BASE}/media/${id}/hls/playlist.m3u8`,
   downloadUrl: (id: number) => `${BASE}/media/${id}/download`,
 };
+
+// ============================================================
+// 이민 탭
+// ============================================================
+
+export type ImmVote = 'yes' | 'no';
+export type ImmCommentKind = 'opinion' | 'question';
+export type ImmItemStatus = 'todo' | 'done' | 'waiting';
+
+export interface ImmPerson {
+  id: number;
+  name: string;
+  profileImage: string | null;
+}
+
+export interface ImmSummary {
+  people: ImmPerson[];
+  pendingVotes: number;
+}
+
+export interface ImmPhoto {
+  id: number;
+  full: string;
+  thumb: string;
+  width: number | null;
+  height: number | null;
+}
+
+export interface ImmAgenda {
+  id: number;
+  title: string;
+  body: string;
+  authorId: number;
+  authorName: string;
+  revision: number;
+  revisedAt: string;
+  confirmedAt: string | null;
+  createdAt: string;
+  opinionCount: number;
+  questionCount: number;
+  votes: Record<number, ImmVote>;
+  photos: ImmPhoto[];
+}
+
+export interface ImmComment {
+  id: number;
+  kind: ImmCommentKind;
+  body: string;
+  authorId: number;
+  authorName: string;
+  createdAt: string;
+  photos: ImmPhoto[];
+}
+
+export interface ImmItem {
+  id: number;
+  title: string;
+  memo: string;
+  dueDate: string | null;
+  assigneeId: number | null;   // null = 둘 다
+  status: ImmItemStatus;
+  doneDate: string | null;
+  creatorId: number;
+  createdAt: string;
+  updatedAt: string;
+}

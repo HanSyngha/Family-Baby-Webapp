@@ -64,7 +64,8 @@ self.addEventListener('notificationclick', (event) => {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
-          return client.focus();
+          // 이미 열린 창이면 앞으로 가져오고 알림의 화면(예: 이민 탭)으로 이동
+          return client.focus().then((c) => (url !== '/' && c && 'navigate' in c ? c.navigate(url).catch(() => c) : c));
         }
       }
       return clients.openWindow(url);

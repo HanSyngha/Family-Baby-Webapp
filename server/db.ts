@@ -761,6 +761,96 @@ try {
   db.exec('CREATE INDEX IF NOT EXISTS idx_trip_plan_requests_plan ON trip_plan_requests(planId, status)');
 } catch (e) { console.error('[DB] trip_plans schema error:', e); }
 
+// ============================================================
+// 이민 탭 (승하·하람 둘만) — 안건/투표/댓글/사진/할 일·완료/알림.
+// 갤러리(media)와 완전히 분리: 사진은 imm_photos + data/immigration/ 에만 있다.
+// → 땅콩땅콩 동기화·Peanut World·고아 파일 정리 어느 경로에도 걸리지 않는다.
+// ============================================================
+try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS imm_agendas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      authorId INTEGER NOT NULL REFERENCES users(id),
+      title TEXT NOT NULL,
+      body TEXT DEFAULT '',
+      revision INTEGER NOT NULL DEFAULT 1,
+      revisedAt TEXT DEFAULT (datetime('now', '+9 hours')),  -- 올린/마지막 수정 시각 (4시간 알림 기준)
+      confirmedAt TEXT,
+      createdAt TEXT DEFAULT (datetime('now', '+9 hours'))
+    );
+
+    -- 현재 revision의 표만 남는다. 수정하면 그 안건 표를 지운다(찬성·반대 모두 초기화).
+    CREATE TABLE IF NOT EXISTS imm_votes (
+      agendaId INTEGER NOT NULL REFERENCES imm_agendas(id) ON DELETE CASCADE,
+      userId INTEGER NOT NULL REFERENCES users(id),
+      value TEXT NOT NULL CHECK (value IN ('yes', 'no')),
+      votedAt TEXT DEFAULT (datetime('now', '+9 hours')),
+      PRIMARY KEY (agendaId, userId)
+    );
+
+    CREATE TABLE IF NOT EXISTS imm_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      agendaId INTEGER NOT NULL REFERENCES imm_agendas(id) ON DELETE CASCADE,
+      authorId INTEGER NOT NULL REFERENCES users(id),
+      kind TEXT NOT NULL CHECK (kind IN ('opinion', 'question')),
+      body TEXT DEFAULT '',
+      createdAt TEXT DEFAULT (datetime('now', '+9 hours'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_imm_comments_agenda ON imm_comments(agendaId);
+
+    -- 사진은 먼저 올리고(agendaId·commentId 둘 다 NULL), 글을 저장할 때 붙인다.
+    CREATE TABLE IF NOT EXISTS imm_photos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      uploaderId INTEGER NOT NULL REFERENCES users(id),
+      agendaId INTEGER REFERENCES imm_agendas(id) ON DELETE CASCADE,
+      commentId INTEGER REFERENCES imm_comments(id) ON DELETE CASCADE,
+      filename TEXT NOT NULL UNIQUE,
+      width INTEGER,
+      height INTEGER,
+      createdAt TEXT DEFAULT (datetime('now', '+9 hours'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_imm_photos_agenda ON imm_photos(agendaId);
+    CREATE INDEX IF NOT EXISTS idx_imm_photos_comment ON imm_photos(commentId);
+
+    -- 할 일과 완료 기록을 한 테이블에: status todo → done. 'waiting'은 "DP 대기중" 같은 상태 메모.
+    CREATE TABLE IF NOT EXISTS imm_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      memo TEXT DEFAULT '',
+      dueDate TEXT,
+      assigneeId INTEGER REFERENCES users(id),  -- NULL = 둘 다
+      status TEXT NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'done', 'waiting')),
+      doneDate TEXT,
+      creatorId INTEGER NOT NULL REFERENCES users(id),
+      createdAt TEXT DEFAULT (datetime('now', '+9 hours')),
+      updatedAt TEXT DEFAULT (datetime('now', '+9 hours'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_imm_items_status ON imm_items(status);
+
+    -- 미투표 알림을 언제 보냈나. revision이 바뀌면(수정) 처음부터 다시 4시간.
+    CREATE TABLE IF NOT EXISTS imm_reminders (
+      agendaId INTEGER NOT NULL REFERENCES imm_agendas(id) ON DELETE CASCADE,
+      userId INTEGER NOT NULL REFERENCES users(id),
+      revision INTEGER NOT NULL,
+      lastSentAt TEXT NOT NULL,
+      PRIMARY KEY (agendaId, userId)
+    );
+
+    -- 보낼 알림함. 밤(23~8시)엔 쌓아 두고 아침에 사람별로 한 통으로 묶어 보낸다.
+    -- agendaId: 안건이 지워지면 아직 안 나간 그 안건 알림도 같이 사라진다.
+    CREATE TABLE IF NOT EXISTS imm_outbox (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL REFERENCES users(id),
+      agendaId INTEGER REFERENCES imm_agendas(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      createdAt TEXT DEFAULT (datetime('now', '+9 hours')),
+      sentAt TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_imm_outbox_unsent ON imm_outbox(sentAt, userId);
+  `);
+} catch (e) { console.error('[DB] immigration schema error:', e); }
+
 // 기존 파일들의 해시를 채워넣기 (quick hash: head+tail+size)
 import crypto from 'crypto';
 const CHUNK = 4 * 1024 * 1024;

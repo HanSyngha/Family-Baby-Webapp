@@ -1,7 +1,7 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
-import type { MouseEvent } from 'react';
+import { useRef, useEffect, useCallback, useState, lazy, Suspense } from 'react';
+import type { MouseEvent, ReactElement } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { api, type User } from '../../api';
+import { api, type User, type ImmSummary } from '../../api';
 import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 import { isNativeApp } from '../../lib/backup';
 import styles from './AppShell.module.css';
@@ -11,17 +11,25 @@ import Trip from '../../pages/Trip';
 import Parenting from '../../pages/Parenting';
 import Life from '../../pages/Life';
 import Settings from '../../pages/Settings';
+// 이민 탭은 두 사람만 쓰므로 별도 청크 — 다른 계정은 내려받지도 않는다.
+const Immigration = lazy(() => import('../../pages/Immigration'));
 
 interface Props {
   user: User;
   onLogout: () => void;
 }
 
+// 여행 탭은 이민 준비 기간 동안 숨긴다(2026-10-06). 라우트·코드·데이터는 그대로라 /trip 주소로는 열리고,
+// true로 바꾸면 탭이 다시 보인다.
+const SHOW_TRIP_TAB = false;
+
 // hideNarrow: 폴드 접힌 상태(≤300px)에선 바텀탭에서 숨긴다(칸당 44px 확보). 사이드바에는 그대로 남음.
-const NAV_ITEMS = [
+// immigrationOnly: 승하·하람만 (서버 /api/immigration/summary가 200일 때만 보인다).
+const NAV_ITEMS: { path: string; label: string; icon: (p: IconProps) => ReactElement; hideNarrow?: boolean; hidden?: boolean; immigrationOnly?: boolean }[] = [
   { path: '/home', label: '홈', icon: HomeIcon },
   { path: '/gallery', label: '갤러리', icon: GalleryIcon },
-  { path: '/trip', label: '여행', icon: TripIcon },
+  { path: '/immigration', label: '이민', icon: ImmigrationIcon, immigrationOnly: true },
+  { path: '/trip', label: '여행', icon: TripIcon, hidden: !SHOW_TRIP_TAB },
   { path: '/parenting', label: '육아', icon: ParentingIcon },
   { path: '/life', label: '생활', icon: LifeIcon },
   { path: '/settings', label: '설정', icon: SettingsIcon, hideNarrow: true },
@@ -35,6 +43,38 @@ export default function AppShell({ user, onLogout }: Props) {
   const { canInstall, install } = useInstallPrompt();
   const contentRef = useRef<HTMLElement>(null);
   const touchRef = useRef<{ x: number; y: number; time: number } | null>(null);
+
+  // ── 이민 탭 접근 ─────────────────────────────────────────────
+  // null = 확인 중. 지난번 결과를 기억해 두어 탭이 늦게 '튀어나오지' 않게 한다.
+  const immKey = `immAccess:${user.id}`;
+  const [immAccess, setImmAccess] = useState<boolean | null>(() => {
+    try { if (localStorage.getItem(immKey) === '1') return true; } catch { /* 사생활 보호 모드 */ }
+    return user.role === 'master' ? null : false;
+  });
+  const [immSummary, setImmSummary] = useState<ImmSummary | null>(null);
+  const refreshImm = useCallback(() => {
+    if (user.role !== 'master') return;
+    api.getImmigrationSummary()
+      .then(s => {
+        setImmSummary(s);
+        setImmAccess(true);
+        try { localStorage.setItem(immKey, '1'); } catch { /* 무시 */ }
+      })
+      .catch(err => {
+        if (err instanceof Error && err.message === 'Forbidden') {
+          setImmAccess(false);
+          try { localStorage.removeItem(immKey); } catch { /* 무시 */ }
+        }
+      });
+  }, [user.role, immKey]);
+  useEffect(() => { refreshImm(); }, [refreshImm, location.pathname]);
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') refreshImm(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refreshImm]);
+  const navItems = NAV_ITEMS.filter(item => !item.hidden && (!item.immigrationOnly || immAccess));
+  const badgeFor = (path: string) => (path === '/immigration' ? immSummary?.pendingVotes ?? 0 : 0);
 
   const handleExternalClick = useCallback((event: MouseEvent<HTMLAnchorElement>) => {
     if (!isNativeApp) return;
@@ -146,15 +186,17 @@ export default function AppShell({ user, onLogout }: Props) {
     if (idx >= 0) prevTabIdx.current = idx;
   }, [location.pathname]);
 
+  const navPaths = navItems.map(item => item.path).join('|');
   const handleSwipe = useCallback((dx: number) => {
-    const currentIdx = NAV_ITEMS.findIndex(item => location.pathname.startsWith(item.path));
+    const paths = navPaths.split('|');
+    const currentIdx = paths.findIndex(p => location.pathname.startsWith(p));
     if (currentIdx < 0) return;
-    if (dx < 0 && currentIdx < NAV_ITEMS.length - 1) {
-      navigate(NAV_ITEMS[currentIdx + 1].path);
+    if (dx < 0 && currentIdx < paths.length - 1) {
+      navigate(paths[currentIdx + 1]);
     } else if (dx > 0 && currentIdx > 0) {
-      navigate(NAV_ITEMS[currentIdx - 1].path);
+      navigate(paths[currentIdx - 1]);
     }
-  }, [location.pathname, navigate]);
+  }, [location.pathname, navigate, navPaths]);
 
   useEffect(() => {
     const el = contentRef.current;
@@ -163,7 +205,7 @@ export default function AppShell({ user, onLogout }: Props) {
     const onStart = (e: TouchEvent) => {
       // 라이트박스(YARL) 안에서 시작한 스와이프는 탭 전환으로 가로채지 않는다.
       // (확대/사진 넘기기는 YARL이 직접 처리 → 탭으로 안 튐)
-      if ((e.target as Element)?.closest?.('.yarl__root, .shorts-viewer-root')) { touchRef.current = null; return; }
+      if ((e.target as Element)?.closest?.('.yarl__root, .shorts-viewer-root, [data-no-tab-swipe]')) { touchRef.current = null; return; }
       touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
     };
     const onEnd = (e: TouchEvent) => {
@@ -189,14 +231,14 @@ export default function AppShell({ user, onLogout }: Props) {
   }, [handleSwipe]);
 
   return (
-    <div className={styles.shell}>
+    <div className={`${styles.shell} ${location.pathname.startsWith('/immigration') && immAccess ? styles.shellImm : ''}`}>
       {/* Desktop Sidebar */}
       <aside className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
           <span className={styles.logo}>땅콩패밀리</span>
         </div>
         <nav className={styles.sidebarNav}>
-          {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
+          {navItems.map(({ path, label, icon: Icon }) => (
             <NavLink
               key={path}
               to={path}
@@ -208,6 +250,7 @@ export default function AppShell({ user, onLogout }: Props) {
                 <>
                   <Icon active={isActive} />
                   <span>{label}</span>
+                  {badgeFor(path) > 0 && <span className={styles.navBadge}>{badgeFor(path)}</span>}
                 </>
               )}
             </NavLink>
@@ -265,6 +308,14 @@ export default function AppShell({ user, onLogout }: Props) {
           <Route path="home/*" element={<Home user={user} />} />
           <Route path="gallery/*" element={<Gallery user={user} />} />
           <Route path="trip/*" element={<Trip user={user} />} />
+          <Route
+            path="immigration/*"
+            element={
+              immAccess === false ? <Navigate to="/home" replace />
+                : immAccess === null ? null
+                : <Suspense fallback={null}><Immigration user={user} summary={immSummary} onChanged={refreshImm} /></Suspense>
+            }
+          />
           <Route path="parenting/*" element={<Parenting user={user} />} />
           <Route path="life/*" element={<Life user={user} />} />
           <Route path="settings/*" element={<Settings user={user} onLogout={onLogout} />} />
@@ -274,7 +325,7 @@ export default function AppShell({ user, onLogout }: Props) {
 
       {/* Mobile Bottom Tab */}
       <nav className={styles.bottomTab}>
-        {NAV_ITEMS.map(({ path, label, icon: Icon, hideNarrow }) => (
+        {navItems.map(({ path, label, icon: Icon, hideNarrow }) => (
           <NavLink
             key={path}
             to={path}
@@ -286,6 +337,7 @@ export default function AppShell({ user, onLogout }: Props) {
               <>
                 <Icon active={isActive} />
                 <span>{label}</span>
+                {badgeFor(path) > 0 && <span className={styles.tabBadge} aria-label={`투표 기다리는 안건 ${badgeFor(path)}건`}>{badgeFor(path)}</span>}
               </>
             )}
           </NavLink>
@@ -338,6 +390,17 @@ function TripIcon({ active }: IconProps) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17.8 19.2 16 11l3.5-3.5a2.1 2.1 0 0 0-3-3L13 8 4.8 6.2a.7.7 0 0 0-.7 1.1L7.5 11l-2 2H3.5l-.8 1.6 3.3 1.4 1.4 3.3L9 18.5V16.5l2-2 3.7 3.4a.7.7 0 0 0 1.1-.7z" {...fillIf(active)} />
+    </svg>
+  );
+}
+
+function ImmigrationIcon({ active }: IconProps) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="2.5" width="14" height="19" rx="2.2" {...fillIf(active)} />
+      <circle cx="12" cy="10" r="3.4" />
+      <path d="M8.6 10h6.8M12 6.6c-.9 1-1.3 2.1-1.3 3.4s.4 2.4 1.3 3.4M12 6.6c.9 1 1.3 2.1 1.3 3.4s-.4 2.4-1.3 3.4" />
+      <path d="M9.2 17.2h5.6" />
     </svg>
   );
 }
