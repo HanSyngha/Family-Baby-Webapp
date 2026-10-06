@@ -23,16 +23,15 @@
   background:
     radial-gradient(90% 60% at 50% 42%, rgba(40, 70, 120, 0.35), transparent 70%),
     #070D18;
-  animation: overlayLife var(--dur, 1750ms) ease both;
+  /* --dur = 장면 길이, --total = 장면 + 붙잡아 두는 시간(말씀을 다 읽도록). 끝에서 0.45초 동안 사라진다 */
+  animation:
+    overlayIn 250ms ease both,
+    overlayOut 450ms ease calc(var(--total, 3000ms) - 450ms) forwards;
   cursor: pointer;
 }
 
-@keyframes overlayLife {
-  0%   { opacity: 0; }
-  8%   { opacity: 1; }
-  82%  { opacity: 1; }
-  100% { opacity: 0; }
-}
+@keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes overlayOut { to { opacity: 0; } }
 
 .stage {
   animation: shake 1750ms linear both;
@@ -60,15 +59,16 @@
     inset 10px 0 18px -12px rgba(60, 40, 10, 0.45),   /* 제본 쪽 그림자 */
     0 24px 60px rgba(0, 0, 0, 0.55);
   transform-origin: left center;
-  animation: pageLife 1750ms cubic-bezier(0.3, 0, 0.2, 1) both;
+  /* 장이 넘어가는 건 연출 맨 끝(말씀을 다 읽은 뒤) — 전체 길이(--total)에 맞춘다 */
+  animation: pageLife var(--total, 2950ms) cubic-bezier(0.3, 0, 0.2, 1) both;
   backface-visibility: hidden;
 }
 
 /* 넘김은 perspective()를 transform 안에 둔다 — 부모(.stage)가 흔들림 transform을 가져 3D 문맥이 끊기므로 */
 @keyframes pageLife {
   0%    { opacity: 0; transform: perspective(1400px) translateY(28px) scale(0.96) rotateY(0deg); }
-  16%   { opacity: 1; transform: perspective(1400px) translateY(0) scale(1) rotateY(0deg); }
-  77%   { opacity: 1; transform: perspective(1400px) translateY(0) scale(1) rotateY(0deg); }
+  9.5%  { opacity: 1; transform: perspective(1400px) translateY(0) scale(1) rotateY(0deg); }
+  80%   { opacity: 1; transform: perspective(1400px) translateY(0) scale(1) rotateY(0deg); }
   97%   { opacity: 0.2; transform: perspective(1400px) translateY(0) scale(1) rotateY(-100deg); }
   100%  { opacity: 0; transform: perspective(1400px) translateY(0) scale(1) rotateY(-100deg); }
 }
@@ -166,25 +166,15 @@
   z-index: 2;
   max-width: 320px;
   text-align: center;
-  animation: captionLife var(--dur, 1750ms) ease both;
+  /* 말씀은 처음(0.3초)부터 떠서 연출이 끝날 때까지 남는다 — 장면이 짧아도 끝까지 읽을 수 있게 */
+  animation: captionIn 600ms ease 300ms both;
 }
 
-@keyframes captionLife {
-  0%, 35%  { opacity: 0; transform: translateY(8px); filter: blur(4px); }
-  46%      { opacity: 1; transform: none; filter: blur(0); }
-  80%      { opacity: 1; }
-  96%,100% { opacity: 0; }
+@keyframes captionIn {
+  from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
 }
 
-/* 장면이 끝난 뒤(≈56%)에 말씀이 뜬다 */
-.c_late { animation-name: captionLate; }
-
-@keyframes captionLate {
-  0%, 56%  { opacity: 0; transform: translateY(8px); filter: blur(4px); }
-  66%      { opacity: 1; transform: none; filter: blur(0); }
-  86%      { opacity: 1; }
-  97%,100% { opacity: 0; }
-}
 
 /* 화면 전체를 쓰는 장면: 하늘 쪽(위) */
 .c_top {
@@ -193,14 +183,6 @@
   left: 24px;
   right: 24px;
   margin: 0 auto;
-  animation-name: captionSky;
-}
-
-@keyframes captionSky {
-  0%, 60%  { opacity: 0; transform: translateY(14px); filter: blur(5px); }
-  72%      { opacity: 1; transform: none; filter: blur(0); }
-  88%      { opacity: 1; }
-  98%,100% { opacity: 0; }
 }
 
 /* 화면 전체를 쓰는 장면: 아래쪽 */
@@ -210,7 +192,6 @@
   left: 24px;
   right: 24px;
   margin: 0 auto;
-  animation-name: captionLate;
 }
 
 /* ---------- 2) 출발 안내판 ---------- */
@@ -227,9 +208,7 @@
 
 @keyframes boardLife {
   0%   { opacity: 0; transform: translateY(18px); }
-  10%  { opacity: 1; transform: none; }
-  84%  { opacity: 1; transform: none; }
-  100% { opacity: 0; transform: translateY(-24px); }
+  10%, 100% { opacity: 1; transform: none; }
 }
 
 .boardHead {

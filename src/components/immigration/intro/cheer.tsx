@@ -12,12 +12,18 @@ import s from './cheer.module.css';
  * 사진: 하람이 갤러리에서 하트 누른 설이 사진(서버 summary.cheerPhotoIds)이 4장 이상이면 그것,
  * 아니면 아래 기본 사진. 갤러리 것을 id로 가리키기만 한다(복사 없음). 공유 사진만.
  */
-export const CHEER_PHOTO_IDS: number[] = [
+// [id, 얼굴 위치 y(사진 높이 대비), x] — 액자 모양이 달라도 얼굴이 잘리지 않게 맞추는 기준점
+const CHEER_PHOTOS: [number, number, number?][] = [
   // 9/26 스튜디오 촬영 (승하가 고른 65105부터) — 2026-10-06 선정, 목욕·기저귀 사진 제외
-  65105, 65528, 65537, 65541, 65003, 65690, 65022, 65695,
+  [65105, 0.46], [65528, 0.57], [65537, 0.56], [65541, 0.47, 0.38],
+  [65003, 0.36], [65690, 0.48], [65022, 0.54], [65695, 0.49],
   // 활짝 웃는 성장 사진
-  1590, 64497, 64698, 66591,
+  [1590, 0.24], [64497, 0.2], [64698, 0.75], [66591, 0.32],
 ];
+export const CHEER_PHOTO_IDS = CHEER_PHOTOS.map(([id]) => id);
+const FOCUS = new Map(CHEER_PHOTOS.map(([id, y, x]) => [id, { y, x: x ?? 0.5 }]));
+// 하람이 하트 누른 사진은 얼굴 위치를 모르니, 아기 사진에서 흔한 '위쪽 1/3'로 본다
+const DEFAULT_FOCUS = { y: 0.34, x: 0.5 };
 
 /** n장을 고르되 직전에 본 사진은 되도록 피한다 */
 function pick(pool: number[], n: number): number[] {
@@ -44,14 +50,34 @@ function useHandFont() {
   }, []);
 }
 
-function Photo({ id }: { id: number }) {
+/**
+ * object-fit: cover로 잘릴 때 얼굴(focus)이 액자 안 target 위치에 오도록 object-position을 계산한다.
+ * 이미지 점 f가 상자 t에 오려면 p = (t·box − f·img) / (box − img)  (0~1로 자름)
+ */
+function Photo({ id, target = 0.45 }: { id: number; target?: number }) {
   const [loaded, setLoaded] = useState(false);
+  const focus = FOCUS.get(id) ?? DEFAULT_FOCUS;
+  const place = (img: HTMLImageElement) => {
+    const { naturalWidth: nw, naturalHeight: nh, clientWidth: bw, clientHeight: bh } = img;
+    if (!nw || !nh || !bw || !bh) return;
+    const clamp = (v: number) => Math.min(1, Math.max(0, v));
+    let px = 0.5;
+    let py = 0.5;
+    if (nh / nw > bh / bw) {
+      const h = bw * (nh / nw);
+      py = clamp((target * bh - focus.y * h) / (bh - h));
+    } else {
+      const w = bh * (nw / nh);
+      px = clamp((0.5 * bw - focus.x * w) / (bw - w));
+    }
+    img.style.objectPosition = `${px * 100}% ${py * 100}%`;
+  };
   return (
     <img
       src={api.thumbUrl(id, undefined, 640)}
       alt=""
       className={`${s.img} ${loaded ? s.imgOn : ''}`}
-      onLoad={() => setLoaded(true)}
+      onLoad={e => { place(e.currentTarget); setLoaded(true); }}
       onError={e => { e.currentTarget.style.visibility = 'hidden'; }}
     />
   );
@@ -123,7 +149,7 @@ function CanDoScene({ photos }: SceneProps) {
       <div className={s.canDo}>
         <div className={s.rays} aria-hidden="true" />
         <div className={s.ring} aria-hidden="true" />
-        <div className={s.circlePhoto}><Photo id={id} /></div>
+        <div className={s.circlePhoto}><Photo id={id} target={0.5} /></div>
         <div className={s.burst} aria-hidden="true">
           {Array.from({ length: 10 }, (_, i) => (
             <svg key={i} viewBox="0 0 24 24" style={{ ['--i' as string]: i }}><path d="M12 2l2.9 6.6 7.1.7-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.3l7.1-.7z" /></svg>

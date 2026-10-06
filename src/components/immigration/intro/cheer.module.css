@@ -80,24 +80,21 @@
   0%, 6% { transform: translate(-50%, -70vh) rotate(-24deg); opacity: 0; }
   16%    { transform: translate(-100%, 16px) rotate(-11deg); opacity: 1; }
   19%    { transform: translate(-98%, 10px) rotate(-9deg); }
-  86%    { transform: translate(-98%, 10px) rotate(-9deg); opacity: 1; }
-  100%   { transform: translate(-98%, 0) rotate(-9deg); opacity: 0; }
+  100%   { transform: translate(-98%, 10px) rotate(-9deg); opacity: 1; }
 }
 
 @keyframes drop1 {
   0%, 14% { transform: translate(-50%, -70vh) rotate(20deg); opacity: 0; }
   24%     { transform: translate(-2%, 24px) rotate(10deg); opacity: 1; }
   27%     { transform: translate(-4%, 18px) rotate(8deg); }
-  86%     { transform: translate(-4%, 18px) rotate(8deg); opacity: 1; }
-  100%    { transform: translate(-4%, 8px) rotate(8deg); opacity: 0; }
+  100%    { transform: translate(-4%, 18px) rotate(8deg); opacity: 1; }
 }
 
 @keyframes drop2 {
   0%, 22% { transform: translate(-50%, -70vh) rotate(-8deg); opacity: 0; }
   32%     { transform: translate(-50%, 46px) rotate(-1deg) scale(1.04); opacity: 1; }
   35%     { transform: translate(-50%, 40px) rotate(-2deg) scale(1.04); }
-  86%     { transform: translate(-50%, 40px) rotate(-2deg) scale(1.04); opacity: 1; }
-  100%    { transform: translate(-50%, 30px) rotate(-2deg) scale(1.04); opacity: 0; }
+  100%    { transform: translate(-50%, 40px) rotate(-2deg) scale(1.04); opacity: 1; }
 }
 
 .messageFight { animation: message 3200ms ease both; }
@@ -106,7 +103,7 @@
   0%, 38% { opacity: 0; transform: translateY(10px) scale(0.96); }
   46%     { opacity: 1; transform: none; }
   88%     { opacity: 1; }
-  100%    { opacity: 0; }
+  100%    { opacity: 1; }
 }
 
 /* ============ 엄마 사랑해요 — 하트 액자 (3200ms) ============ */
@@ -133,8 +130,7 @@
   62%  { transform: scale(1); }
   65%  { transform: scale(1.05); }
   68%  { transform: scale(1); }
-  88%  { transform: scale(1); opacity: 1; }
-  100% { transform: scale(1.04); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .heartPhoto {
@@ -187,7 +183,7 @@
   0%, 30% { opacity: 0; transform: translateY(10px) scale(0.96); }
   40%     { opacity: 1; transform: none; }
   88%     { opacity: 1; }
-  100%    { opacity: 0; }
+  100%    { opacity: 1; }
 }
 
 /* ============ 엄마 할 수 있어요 — 금빛 고리 + 별 (3000ms) ============ */
@@ -206,8 +202,7 @@
   58%  { transform: scale(1.1); }
   63%  { transform: scale(0.97); }
   67%  { transform: scale(1); }
-  88%  { opacity: 1; }
-  100% { transform: scale(1.03); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .rays {
@@ -291,23 +286,20 @@
 @keyframes wordPop {
   0%, 50% { opacity: 0; transform: scale(0.4); }
   56%     { opacity: 1; transform: scale(1.12); }
-  60%, 88% { opacity: 1; transform: scale(1); }
-  100%    { opacity: 0; }
+  60%, 100% { opacity: 1; transform: scale(1); }
 }
 
 @keyframes wordPop2 {
   0%, 57% { opacity: 0; transform: scale(0.4) rotate(-4deg); }
   63%     { opacity: 1; transform: scale(1.18) rotate(2deg); }
-  67%, 88% { opacity: 1; transform: scale(1) rotate(0); }
-  100%    { opacity: 0; }
+  67%, 100% { opacity: 1; transform: scale(1) rotate(0); }
 }
 
 .messageCanDo .from { animation: fromIn 3000ms ease both; }
 
 @keyframes fromIn {
   0%, 64% { opacity: 0; }
-  70%, 88% { opacity: 1; }
-  100% { opacity: 0; }
+  70%, 100% { opacity: 1; }
 }
 
 /* ============ 나는 엄마의 모든 모습이 좋아요 — 필름 (3800ms) ============ */
@@ -337,8 +329,7 @@
 @keyframes filmIn {
   0%   { opacity: 0; transform: rotate(-4deg) translateY(20px); }
   8%   { opacity: 1; transform: rotate(-4deg); }
-  90%  { opacity: 1; }
-  100% { opacity: 0; transform: rotate(-4deg) translateY(-10px); }
+  100% { opacity: 1; transform: rotate(-4deg); }
 }
 
 .filmTrack {
@@ -371,20 +362,17 @@
 
 @keyframes lineIn {
   0%, 18% { opacity: 0; transform: translateY(8px); filter: blur(4px); }
-  28%, 90% { opacity: 1; transform: none; filter: none; }
-  100% { opacity: 0; }
+  28%, 100% { opacity: 1; transform: none; filter: none; }
 }
 
 @keyframes lineIn2 {
   0%, 34% { opacity: 0; transform: translateY(8px); filter: blur(4px); }
-  45%, 90% { opacity: 1; transform: none; filter: none; }
-  100% { opacity: 0; }
+  45%, 100% { opacity: 1; transform: none; filter: none; }
 }
 
 @keyframes fromIn2 {
   0%, 50% { opacity: 0; }
-  58%, 90% { opacity: 1; }
-  100% { opacity: 0; }
+  58%, 100% { opacity: 1; }
 }
 
 @media (max-width: 320px) {

@@ -1,17 +1,14 @@
 /* 방향 · 하늘 · 위로 장면들 — 각 장면 시간(ms)은 sky.tsx와 맞춘다 */
 
+/* 들어온 뒤 그대로 남는다 — 사라지는 건 오버레이가 맡는다(말씀을 끝까지 읽게) */
 @keyframes stageLife {
   0%   { opacity: 0; transform: translateY(16px) scale(0.98); }
-  10%  { opacity: 1; transform: none; }
-  84%  { opacity: 1; transform: none; }
-  100% { opacity: 0; transform: translateY(-18px); }
+  10%, 100% { opacity: 1; transform: none; }
 }
 
 @keyframes fullLife {
   0%   { opacity: 0; }
-  8%   { opacity: 1; }
-  86%  { opacity: 1; }
-  100% { opacity: 0; }
+  8%, 100% { opacity: 1; }
 }
 
 /* ---------- 나침반 (2200ms) ---------- */

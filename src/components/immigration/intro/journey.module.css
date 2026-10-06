@@ -1,11 +1,10 @@
 /* 여정 장면들 — 각 장면의 시간(ms)은 journey.tsx와 맞춘다 */
 
 /* 장면 공통 퇴장: 마지막 15%에 살짝 떠오르며 사라짐 */
+/* 들어온 뒤 그대로 남는다 — 사라지는 건 오버레이가 맡는다(말씀을 끝까지 읽게) */
 @keyframes stageLife {
   0%   { opacity: 0; transform: translateY(16px) scale(0.98); }
-  10%  { opacity: 1; transform: none; }
-  84%  { opacity: 1; transform: none; }
-  100% { opacity: 0; transform: translateY(-18px); }
+  10%, 100% { opacity: 1; transform: none; }
 }
 
 /* ---------- 창가 일출 (2300ms) ---------- */
@@ -280,8 +279,7 @@
   40%  { transform: translateX(-50%) rotate(6deg); }
   50%  { transform: translateX(-50%) rotate(-2deg); }
   58%  { transform: translateX(-50%) rotate(0deg); }
-  70%  { transform: translateX(-50%) translateY(40px) rotate(0deg); }
-  100% { transform: translateX(calc(-50% + 90vw)) translateY(40px) rotate(8deg); }
+  68%, 100% { transform: translateX(-50%) translateY(40px) rotate(0deg); }
 }
 
 .string { width: 2px; height: 40px; background: #C9A257; }
@@ -372,12 +370,6 @@
   flex: 1 0 34px;
   border-radius: 2px;
   background: linear-gradient(180deg, #3A3F48, #2A2E35);
-  animation: beltMove 2100ms linear both;
-}
-
-@keyframes beltMove {
-  0%, 60% { transform: translateX(0); }
-  100% { transform: translateX(140px); }
 }
 
 /* ---------- 이삿짐 상자 (2100ms) ---------- */

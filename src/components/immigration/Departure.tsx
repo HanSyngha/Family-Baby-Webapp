@@ -66,6 +66,9 @@ export function nextIntroStyle(cur: IntroStyle): IntroStyle {
   return style;
 }
 
+// 장면이 끝난 뒤 마지막 화면을 붙잡아 두는 시간 — 말씀(또는 설이 문구)을 끝까지 읽을 수 있게
+const HOLD_MS = 1200;
+
 const CAPTION_CLASS: Record<string, string | undefined> = {
   mid: undefined,
   late: styles.c_late,
@@ -80,6 +83,7 @@ export function DepartureIntro({ style, verseIndex, label, photos }: { style: In
   });
   const spec = SCENES[style] ?? SCENES.stamp;
   const { ms, haptic } = spec;
+  const total = ms + HOLD_MS;
 
   useEffect(() => { loadVerseFont(); }, []);
 
@@ -90,9 +94,9 @@ export function DepartureIntro({ style, verseIndex, label, photos }: { style: In
     const timers = canVibrate ? haptic.map(([at, pattern]) => window.setTimeout(() => {
       try { navigator.vibrate?.(pattern); } catch { /* 미지원 */ }
     }, at)) : [];
-    timers.push(window.setTimeout(() => setOn(false), ms));
+    timers.push(window.setTimeout(() => setOn(false), total));
     return () => timers.forEach(t => window.clearTimeout(t));
-  }, [on, ms, haptic]);
+  }, [on, total, haptic]);
 
   if (!on) return null;
   const verse = VERSES[verseIndex];
@@ -100,7 +104,7 @@ export function DepartureIntro({ style, verseIndex, label, photos }: { style: In
   return createPortal(
     <div
       className={styles.overlay}
-      style={{ ['--dur' as string]: `${ms}ms`, background: spec.bg }}
+      style={{ ['--dur' as string]: `${ms}ms`, ['--total' as string]: `${total}ms`, background: spec.bg }}
       data-no-tab-swipe
       onClick={() => setOn(false)}
       aria-hidden="true"

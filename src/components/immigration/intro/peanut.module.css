@@ -209,17 +209,17 @@
   left: 50%;
   bottom: 18px;
   width: 150px;
-  animation: caseRoll 2200ms cubic-bezier(0.4, 0, 0.3, 1) both;
+  /* 출발(굴러 나감)은 연출 맨 끝 — 전체 길이(--total ≈ 3400ms)에 맞춘다 */
+  animation: caseRoll var(--total, 3400ms) cubic-bezier(0.4, 0, 0.3, 1) both;
 }
 
 @keyframes caseRoll {
   0%   { transform: translateX(calc(-50% - 80vw)); }
-  24%  { transform: translateX(calc(-50% + 8px)); }
-  28%  { transform: translateX(-50%); }
-  60%  { transform: translateX(-50%); }
-  64%  { transform: translateX(calc(-50% - 10px)); }
-  84%  { transform: translateX(calc(-50% + 90vw)); }
-  100% { transform: translateX(calc(-50% + 90vw)); }
+  15.5% { transform: translateX(calc(-50% + 8px)); }
+  18%  { transform: translateX(-50%); }
+  79%  { transform: translateX(-50%); }
+  81%  { transform: translateX(calc(-50% - 10px)); }
+  95%, 100% { transform: translateX(calc(-50% + 90vw)); }
 }
 
 .suitcase { position: relative; display: block; width: 100%; height: auto; }
@@ -231,17 +231,17 @@
   transform-origin: 50% 100%;
 }
 
-.riderL { left: 14px; animation: ride 2200ms cubic-bezier(0.3, 0, 0.3, 1) both; }
-.riderR { left: 76px; animation: ride 2200ms cubic-bezier(0.3, 0, 0.3, 1) both; animation-delay: 160ms; }
+.riderL { left: 14px; animation: ride var(--total, 3400ms) cubic-bezier(0.3, 0, 0.3, 1) both; }
+.riderR { left: 76px; animation: ride var(--total, 3400ms) cubic-bezier(0.3, 0, 0.3, 1) both; animation-delay: 160ms; }
 
 @keyframes ride {
-  0%, 27% { transform: translateY(-46vh) rotate(-8deg); opacity: 0; }
-  28%     { opacity: 1; }
-  35%     { transform: translateY(0) scale(1.1, 0.86); }
-  39%     { transform: translateY(-10px) scale(0.96, 1.04); }
-  43%     { transform: translateY(0) scale(1); }
-  62%     { transform: translateY(0) rotate(0deg); }
-  66%     { transform: translateY(0) rotate(-10deg); }
+  0%, 17% { transform: translateY(-46vh) rotate(-8deg); opacity: 0; }
+  18%     { opacity: 1; }
+  23%     { transform: translateY(0) scale(1.1, 0.86); }
+  26%     { transform: translateY(-10px) scale(0.96, 1.04); }
+  28%     { transform: translateY(0) scale(1); }
+  77%     { transform: translateY(0) rotate(0deg); }
+  80%     { transform: translateY(0) rotate(-10deg); }
   100%    { transform: translateY(0) rotate(-10deg); opacity: 1; }
 }
 
@@ -251,28 +251,28 @@
   bottom: 30px;
   width: 40px;
   margin-left: -20px;
-  animation: peek 2200ms cubic-bezier(0.3, 0, 0.3, 1) both;
+  animation: peek var(--total, 3400ms) cubic-bezier(0.3, 0, 0.3, 1) both;
 }
 
 @keyframes peek {
-  0%, 44% { transform: translateY(20px) scale(0.2); opacity: 0; }
-  50%     { transform: translateY(-6px) scale(1.1); opacity: 1; }
-  55%, 100% { transform: translateY(0) scale(1); opacity: 1; }
+  0%, 28% { transform: translateY(20px) scale(0.2); opacity: 0; }
+  32%     { transform: translateY(-6px) scale(1.1); opacity: 1; }
+  36%, 100% { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 .tag {
   transform-box: view-box;
   transform-origin: 118px 20px;
-  animation: swing 2200ms ease-in-out both;
+  animation: swing var(--total, 3400ms) ease-in-out both;
 }
 
 @keyframes swing {
   0%   { transform: rotate(28deg); }
-  20%  { transform: rotate(-22deg); }
-  30%  { transform: rotate(16deg); }
-  40%  { transform: rotate(-8deg); }
-  50%, 62% { transform: rotate(0deg); }
-  72%, 100% { transform: rotate(34deg); }
+  13%  { transform: rotate(-22deg); }
+  19%  { transform: rotate(16deg); }
+  26%  { transform: rotate(-8deg); }
+  32%, 79% { transform: rotate(0deg); }
+  85%, 100% { transform: rotate(34deg); }
 }
 
 .speedLines {
@@ -291,13 +291,12 @@
   width: 0;
   border-radius: 1px;
   background: linear-gradient(90deg, transparent, rgba(227, 194, 126, 0.7));
-  animation: speed 2200ms ease-out both;
+  animation: speed var(--total, 3400ms) ease-out both;
   animation-delay: calc(var(--i) * 30ms);
 }
 
 @keyframes speed {
-  0%, 62% { width: 0; opacity: 0; }
-  68%     { width: 30vw; opacity: 1; }
-  84%     { width: 40vw; opacity: 0; }
-  100%    { width: 40vw; opacity: 0; }
+  0%, 79% { width: 0; opacity: 0; }
+  83%     { width: 30vw; opacity: 1; }
+  95%, 100% { width: 40vw; opacity: 0; }
 }
