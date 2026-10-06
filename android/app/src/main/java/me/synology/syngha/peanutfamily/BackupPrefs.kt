@@ -95,6 +95,17 @@ object BackupPrefs {
         cfg(ctx).edit().putLong("sweepCursor", 0L).putBoolean("sweepDone", false).apply()
     }
 
+    /**
+     * 2.1 이하 스윕은 '중지'만 눌러도 완료로 찍혔다(2.2에서 고침). 그렇게 멈춘 폰은 2.2의 일괄 대조
+     * (스윕 안에서 돈다)도 영영 안 돌아 진행률이 새로 찍은 사진만큼만 올랐다(황하람 폰: 일주일간 2.9%).
+     * 업데이트 후 한 번만 스윕을 처음부터 다시 돌린다. 일괄 대조 덕에 몇 초면 끝난다.
+     */
+    fun resetStaleSweepOnce(ctx: Context) {
+        if (cfg(ctx).getBoolean("staleSweepReset", false)) return
+        resetSweep(ctx)
+        cfg(ctx).edit().putBoolean("staleSweepReset", true).apply()
+    }
+
     // ---- 상태(UI 표시용) ----
     fun setState(ctx: Context, lastRunAt: Long, pending: Int, uploading: Boolean, lastError: String?) {
         val e = cfg(ctx).edit()

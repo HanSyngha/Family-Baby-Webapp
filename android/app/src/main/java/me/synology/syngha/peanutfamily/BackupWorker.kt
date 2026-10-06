@@ -48,6 +48,7 @@ class BackupWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
     }
 
     private suspend fun runBackup(): Result = withContext(Dispatchers.IO) {
+        BackupPrefs.resetStaleSweepOnce(ctx)
 
         val refresh = BackupPrefs.refreshToken(ctx)
         if (refresh == null) {
