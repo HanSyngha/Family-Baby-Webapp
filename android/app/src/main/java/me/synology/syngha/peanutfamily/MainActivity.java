@@ -12,6 +12,7 @@ import android.webkit.URLUtil;
 import android.webkit.WebView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -25,6 +26,30 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
 
         WebView webView = getBridge().getWebView();
+
+        // 뒤로 = 웹 화면 한 단계 뒤로(창 닫기·이전 탭). 더 갈 곳이 없을 때만 앱을 닫는다.
+        // - targetSdk 36(Android 16)부터 예측형 뒤로가기가 기본이라 onBackPressed()가 아예 호출되지 않는다 —
+        //   그래서 뒤로를 누르면 앱이 바로 꺼졌다. OnBackPressedDispatcher 콜백은 예측형 뒤로가기에서도 불린다.
+        // - WebView.canGoBack()/copyBackForwardList()는 SPA가 pushState로 쌓은 기록을 모른다
+        //   (Android 16 에뮬레이터 실측: 홈→생활 탭 이동 후 size=1, canGoBack=false). 그래서 페이지에 묻는다:
+        //   라우터가 쌓은 기록(idx>0)이나 창(modal·immSheet)이 있으면 history.back(), 없으면 앱 종료.
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                WebView wv = getBridge() != null ? getBridge().getWebView() : null;
+                if (wv == null) {
+                    exitApp(this);
+                    return;
+                }
+                OnBackPressedCallback self = this;
+                wv.evaluateJavascript(
+                    "(function(){ var s = history.state || {}; return !!(s.idx > 0 || s.modal || s.immSheet); })()",
+                    canGoBack -> {
+                        if ("true".equals(canGoBack)) wv.evaluateJavascript("history.back()", null);
+                        else exitApp(self);
+                    });
+            }
+        });
 
         // 키보드가 댓글 입력창을 덮던 문제(Android 15+). targetSdk 36이면 엣지투엣지가 강제돼 adjustResize가
         // 창을 줄이지 않고, 키보드 높이(IME 인셋)는 앱이 직접 반영해야 한다. Capacitor의 adjustMarginsForEdgeToEdge
@@ -78,6 +103,13 @@ public class MainActivity extends BridgeActivity {
         });
     }
 
+    // 뒤로 갈 곳이 없을 때: 콜백을 잠시 끄고 기본 동작(액티비티 종료)에 맡긴다
+    private void exitApp(OnBackPressedCallback callback) {
+        callback.setEnabled(false);
+        getOnBackPressedDispatcher().onBackPressed();
+        callback.setEnabled(true);
+    }
+
     // WebView 쿠키(fauth/frefresh)는 메모리에서 디스크로 주기적으로만 내려간다. 삼성 절전·스와이프 종료로
     // 프로세스가 강제 종료되면 최근 갱신분이 유실돼 다음 실행 때 로그인이 풀리므로 백그라운드 진입 시 즉시 flush.
     @Override
@@ -87,15 +119,5 @@ public class MainActivity extends BridgeActivity {
             CookieManager.getInstance().flush();
         } catch (Exception ignored) {
         }
-    }
-
-    @Override
-    public void onBackPressed() {
-        WebView webView = getBridge() != null ? getBridge().getWebView() : null;
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
-            return;
-        }
-        super.onBackPressed();
     }
 }
