@@ -25,6 +25,11 @@ object MediaScanner {
      * 선택 폴더에서 date_added >= cursor 인 신규 미디어를 date_added 오름차순으로.
      * `>=`(>가 아님)인 이유: 연사/버스트는 같은 초(date_added)를 공유할 수 있어, `>`면 마지막 처리 초와
      * 같은 초에 추가된 사진이 영구 누락된다. 경계의 항목은 재방문되지만 서버 해시 dedup이 중복 업로드를 막는다.
+     *
+     * cursor <= 0이면 날짜 조건 없이 전부. 삼성 폰은 오래된 항목의 date_added가 NULL일 수 있고
+     * (하람 폰 2026-10-19 실측: 사진 23,701 중 22,804 · 영상 1,321 중 917, 2026-08-21 이전 전부),
+     * `date_added >= 0`은 NULL을 통째로 빠뜨린다 — 전체 대조가 897장만 보고 '완료'로 끝났던 원인.
+     * NULL 항목의 dateAdded는 0으로 읽혀 오름차순 맨 앞에 온다.
      */
     fun newItems(resolver: ContentResolver, folders: Set<String>, includeVideos: Boolean, cursor: Long): List<MediaItem> {
         val out = ArrayList<MediaItem>()
@@ -45,16 +50,21 @@ object MediaScanner {
             MediaStore.MediaColumns.DATE_ADDED,
             BUCKET
         )
-        val sel = StringBuilder("${MediaStore.MediaColumns.DATE_ADDED} >= ?")
+        val conds = ArrayList<String>()
         val args = ArrayList<String>()
-        args.add(cursor.toString())
+        if (cursor > 0) {
+            conds.add("${MediaStore.MediaColumns.DATE_ADDED} >= ?")
+            args.add(cursor.toString())
+        }
         if (folders.isNotEmpty()) {
-            sel.append(" AND $BUCKET IN (${folders.joinToString(",") { "?" }})")
+            conds.add("$BUCKET IN (${folders.joinToString(",") { "?" }})")
             args.addAll(folders)
         }
         val items = ArrayList<MediaItem>()
         resolver.query(
-            collection, projection, sel.toString(), args.toTypedArray(),
+            collection, projection,
+            if (conds.isEmpty()) null else conds.joinToString(" AND "),
+            if (args.isEmpty()) null else args.toTypedArray(),
             "${MediaStore.MediaColumns.DATE_ADDED} ASC"
         )?.use { c ->
             val idCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)

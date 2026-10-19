@@ -33,6 +33,14 @@ export function registerBackupRoutes(app: FastifyInstance) {
         updatedAt  = excluded.updatedAt
     `).run(userId, deviceName, num(b.photoTotal), num(b.photoDone), num(b.videoTotal), num(b.videoDone));
 
+    // 앱 2.5+가 실어 보내는 진단(앱 버전·대조 완료 여부·마지막 대조 결과). 대조는 폰 안에서 돌아
+    // 서버에선 실패가 안 보였다 — 로그에 남겨 폰을 직접 연결하지 않고도 원인을 볼 수 있게.
+    request.log.info({
+      userId, deviceName,
+      photo: `${num(b.photoDone)}/${num(b.photoTotal)}`, video: `${num(b.videoDone)}/${num(b.videoTotal)}`,
+      diag: b.diag ?? null,
+    }, 'backup progress');
+
     return { ok: true };
   });
 
@@ -40,7 +48,7 @@ export function registerBackupRoutes(app: FastifyInstance) {
   // 앱을 새로 깔면 대조 기록이 비어, 수만 장을 한 장씩 해싱·질의하느라 며칠이 걸렸다(0%에 멈춘 듯 보임).
   // 폰 파일명은 촬영 시각이라 크기까지 같으면 사실상 같은 파일이다. 안 맞는 것만 앱이 해시로 다시 확인한다.
   app.post('/api/backup/match', { preHandler: authenticate }, async (request, reply) => {
-    const { role } = (request as any).user;
+    const { userId, role } = (request as any).user;
     if (role !== 'master') return reply.code(403).send({ error: 'master only' });
 
     const items = (request.body as any)?.items;
@@ -51,7 +59,7 @@ export function registerBackupRoutes(app: FastifyInstance) {
     items.forEach((it: any, i: number) => {
       if (typeof it?.name === 'string' && Number.isFinite(it?.size) && stmt.get(it.name, it.size)) found.push(i);
     });
-    request.log.info({ asked: items.length, found: found.length }, 'backup match');
+    request.log.info({ userId, asked: items.length, found: found.length }, 'backup match');
     return { found };
   });
 

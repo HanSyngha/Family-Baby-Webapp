@@ -9,11 +9,13 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 /**
  * 백그라운드 백업 워커.
@@ -96,6 +98,8 @@ class BackupWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
         } catch (_: Exception) { /* 권한/상태에 따라 무시 */ }
 
         val hasLocation = hasLocationPermission()
+        val verifiedPhotos = VerifiedStore.idsOf(ctx, false)
+        val verifiedVideos = VerifiedStore.idsOf(ctx, true)
 
         var done = 0
         var advance = true          // 첫 실패 전까지만 커서 전진(실패분은 다음 회차 재시도)
@@ -108,6 +112,14 @@ class BackupWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                 BackupPrefs.setState(ctx, now(), items.size - done, false, "백업 중지됨")
                 return@withContext Result.success()
             }
+            // 이미 서버에 있다고 확인된 항목은 파일을 읽지 않고 지나간다. 커서가 0(기존 사진 전부 백업)이면
+            // date_added NULL 항목(dateAdded=0)은 커서를 전진시키지 못해 회차마다 처음부터 다시 오는데,
+            // 여기서 거르지 않으면 수만 장을 매번 다시 해싱하느라 영영 앞으로 못 간다.
+            if ((if (item.isVideo) verifiedVideos else verifiedPhotos).contains(item.id)) {
+                if (advance) BackupPrefs.setCursor(ctx, item.dateAdded)
+                done++
+                continue
+            }
             try {
                 runCatching { setForeground(foregroundInfo(done, items.size)) }
                 val token = access ?: break   // 토큰이 사라졌으면(재발급 실패) 중단, 다음 회차 재시도
@@ -115,7 +127,7 @@ class BackupWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                 val realSize = MediaScanner.sizeOf(ctx.contentResolver, readUri) ?: item.size
                 val hash = QuickHash.compute(ctx.contentResolver, readUri, realSize)
 
-                if (!api.isDuplicate(token, hash)) {
+                if (api.isDuplicate(token, hash) != true) {
                     var code = api.upload(token, readUri, item.displayName, item.mimeType)
                     if (code == 401) {  // access 만료 → 1회 재발급 후 재시도
                         access = api.refreshAccessToken(refresh)
@@ -150,62 +162,72 @@ class BackupWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
     }
 
     /**
-     * 최초 전체 대조.
+     * 전체 대조.
      *
      * 백업 커서는 '어디까지 올렸나'만 가리킨다. 앱을 깔기 전부터 폰에 있던 사진은 서버에 있어도
-     * 기록이 없어 진행률이 실제보다 낮게 나온다. 그래서 전체를 한 번 훑으며 해시로 대조해
-     * VerifiedStore를 채운다. 여기서는 업로드하지 않는다 — '있는지 확인'과 '없으면 올리기'는
-     * 다른 일이고, 올리는 건 위 백업 루프(또는 전체 백업 옵션)의 몫이다.
+     * 기록이 없어 진행률이 실제보다 낮게 나온다. 그래서 전체를 훑으며 VerifiedStore를 채운다.
+     * 서버에 없는 항목은 '기존 사진·영상도 전부 백업'이 켜져 있을 때만 여기서 올린다.
      *
-     * 수만 장이면 한 번에 끝낼 수 없으므로 회차마다 시간 예산만큼만 진행하고 커서를 남긴다.
+     * - 날짜 커서를 쓰지 않는다: date_added가 NULL인 항목(삼성)은 날짜로 줄 세울 수 없다.
+     *   매 회차 전체를 훑되 확인된 건 파일을 읽지 않고 지나가므로 빠르다.
+     * - 완료는 '끝까지 훑었고 확인 실패가 하나도 없을 때'만. 네트워크·서버 오류를 '서버에 없음'으로
+     *   치고 넘어가면 한 번의 장애가 영구히 낮은 진행률로 굳는다.
      */
     private suspend fun verifySweep(api: BackupApi, accessToken: String, hasLocation: Boolean) {
         if (BackupPrefs.sweepDone(ctx)) return
         val deadline = now() + SWEEP_BUDGET_MS
-        var cursor = BackupPrefs.sweepCursor(ctx)
-        // 끝까지 훑었을 때만 완료. 예전엔 '중지'로 멈춰도 완료로 찍혀 스윕이 다시 돌지 않았다.
+        val uploadMissing = BackupPrefs.backupExisting(ctx)
         var reachedEnd = true
+        var hashMatched = 0
+        var uploaded = 0
+        var missing = 0      // 서버에 없음(올리지 않음 또는 서버가 거부)
+        var errors = 0       // 확인 자체가 실패 → 다음 회차에 다시
 
-        matchByNameSize(api, accessToken)
+        val nameSizeMatched = matchByNameSize(api, accessToken)
+        if (nameSizeMatched == null) errors++
 
         try {
             val all = MediaScanner.newItems(
-                ctx.contentResolver, BackupPrefs.folders(ctx), BackupPrefs.includeVideos(ctx), cursor
+                ctx.contentResolver, BackupPrefs.folders(ctx), BackupPrefs.includeVideos(ctx), 0L
             )
-            if (all.isEmpty()) {
-                BackupPrefs.setSweepDone(ctx, true)
-                return
-            }
             // 이미 확인된 항목(이름·크기 대조 포함)은 파일을 읽지 않고 지나간다 — 남은 것만 해시로.
             val verifiedPhotos = VerifiedStore.idsOf(ctx, false)
             val verifiedVideos = VerifiedStore.idsOf(ctx, true)
             for (item in all) {
+                if ((if (item.isVideo) verifiedVideos else verifiedPhotos).contains(item.id)) continue
                 if (isStopped || BackupPrefs.stopRequested(ctx) || now() > deadline) {
                     reachedEnd = false
                     break
-                }
-                if ((if (item.isVideo) verifiedVideos else verifiedPhotos).contains(item.id)) {
-                    cursor = item.dateAdded
-                    continue
                 }
                 try {
                     val readUri = MediaScanner.readUri(item.uri, hasLocation)
                     val realSize = MediaScanner.sizeOf(ctx.contentResolver, readUri) ?: item.size
                     val hash = QuickHash.compute(ctx.contentResolver, readUri, realSize)
-                    if (api.isDuplicate(accessToken, hash)) {
-                        VerifiedStore.mark(ctx, item.id, item.isVideo)
+                    when (api.isDuplicate(accessToken, hash)) {
+                        true -> { VerifiedStore.mark(ctx, item.id, item.isVideo); hashMatched++ }
+                        null -> errors++
+                        false -> if (!uploadMissing) missing++ else {
+                            val code = api.upload(accessToken, readUri, item.displayName, item.mimeType)
+                            when {
+                                code in 200..299 -> { VerifiedStore.mark(ctx, item.id, item.isVideo); uploaded++ }
+                                // 서버가 받지 않는 형식 등 다시 해도 같은 결과 → 재시도 대상에서 뺀다
+                                code in 400..499 && code != 401 && code != 408 && code != 429 -> missing++
+                                else -> errors++
+                            }
+                        }
                     }
                 } catch (e: Exception) {
-                    // 한 장 실패가 스윕 전체를 막지 않게. 다음 회차에 커서가 지나가며 재시도된다.
+                    errors++
                 }
-                cursor = item.dateAdded
-                BackupPrefs.setSweepCursor(ctx, cursor)
             }
-            BackupPrefs.setSweepCursor(ctx, cursor)
-            if (reachedEnd) BackupPrefs.setSweepDone(ctx, true)
         } catch (e: Exception) {
-            // 다음 회차에 이어서
+            errors++
         }
+        if (reachedEnd && errors == 0) BackupPrefs.setSweepDone(ctx, true)
+        BackupPrefs.setLastSweep(ctx, JSONObject()
+            .put("at", now()).put("nameSize", nameSizeMatched ?: -1).put("hash", hashMatched)
+            .put("uploaded", uploaded).put("missing", missing).put("errors", errors)
+            .put("reachedEnd", reachedEnd).toString())
     }
 
     /**
@@ -213,21 +235,25 @@ class BackupWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
      * 재설치하면 대조 기록이 비는데, 한 장씩 해싱·질의하는 스윕은 회차당 4분 예산이라 수만 장이면
      * 며칠이 걸려 홈 진행률이 0%에 멈춘 것처럼 보였다. 여기서 대부분을 몇 초 만에 채우고,
      * 이름·크기가 안 맞는 나머지만 아래 해시 스윕이 확인한다.
+     * 확인된 개수를 돌려준다. 실패(네트워크·서버 오류)면 null — 스윕을 완료로 찍지 않게.
      */
-    private fun matchByNameSize(api: BackupApi, accessToken: String) {
-        try {
+    private fun matchByNameSize(api: BackupApi, accessToken: String): Int? {
+        return try {
             val verifiedPhotos = VerifiedStore.idsOf(ctx, false)
             val verifiedVideos = VerifiedStore.idsOf(ctx, true)
             val pending = MediaScanner.newItems(
                 ctx.contentResolver, BackupPrefs.folders(ctx), BackupPrefs.includeVideos(ctx), 0L
             ).filter { !(if (it.isVideo) verifiedVideos else verifiedPhotos).contains(it.id) }
+            var matched = 0
             for (chunk in pending.chunked(500)) {
-                if (isStopped) return
-                val found = api.matchByNameSize(accessToken, chunk) ?: return
+                if (isStopped) return null
+                val found = api.matchByNameSize(accessToken, chunk) ?: return null
                 VerifiedStore.markAll(ctx, found.mapNotNull { chunk.getOrNull(it) })
+                matched += found.size
             }
+            matched
         } catch (e: Exception) {
-            // 실패해도 해시 스윕이 같은 일을 (느리게) 한다.
+            null
         }
     }
 
@@ -241,11 +267,18 @@ class BackupWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx
                 VerifiedStore.idsOf(ctx, false),
                 VerifiedStore.idsOf(ctx, true)
             )
+            val pkg = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
+            val diag = JSONObject()
+                .put("app", PackageInfoCompat.getLongVersionCode(pkg))
+                .put("sweepDone", BackupPrefs.sweepDone(ctx))
+                .put("backupExisting", BackupPrefs.backupExisting(ctx))
+                .put("lastSweep", BackupPrefs.lastSweep(ctx)?.let { JSONObject(it) } ?: JSONObject.NULL)
             api.reportProgress(
                 accessToken,
                 p.photos.first, p.photos.second,
                 p.videos.first, p.videos.second,
-                android.os.Build.MODEL ?: "Android"
+                android.os.Build.MODEL ?: "Android",
+                diag
             )
         } catch (e: Exception) { /* 부가 기능 */ }
     }
