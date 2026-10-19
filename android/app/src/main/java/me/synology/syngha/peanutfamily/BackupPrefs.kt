@@ -84,26 +84,28 @@ object BackupPrefs {
 
     // ---- 최초 전체 대조 스윕 ----
     // 백업 커서는 '어디까지 올렸나'를 가리킬 뿐이라, 앱 설치 전부터 있던 사진이 서버에 있는지는
-    // 모른다. 그래서 별도 커서로 전체를 한 번 훑으며 해시 대조 결과를 VerifiedStore에 채운다.
-    // 시간이 오래 걸리므로 한 번에 다 하지 않고 회차마다 시간 예산만큼만 진행한다.
-    fun sweepCursor(ctx: Context) = cfg(ctx).getLong("sweepCursor", 0L)
-    fun setSweepCursor(ctx: Context, v: Long) = cfg(ctx).edit().putLong("sweepCursor", v).apply()
+    // 모른다. 그래서 전체를 훑으며 대조 결과를 VerifiedStore에 채운다(BackupWorker.verifySweep).
     fun sweepDone(ctx: Context) = cfg(ctx).getBoolean("sweepDone", false)
     fun setSweepDone(ctx: Context, v: Boolean) = cfg(ctx).edit().putBoolean("sweepDone", v).apply()
     /** 폴더 설정이 바뀌면 대조 기준이 달라지므로 처음부터 다시. */
     fun resetSweep(ctx: Context) {
-        cfg(ctx).edit().putLong("sweepCursor", 0L).putBoolean("sweepDone", false).apply()
+        cfg(ctx).edit().putBoolean("sweepDone", false).apply()
     }
 
+    /** 마지막 대조 결과(JSON 문자열). 진행률 보고에 실려 서버 로그로 간다. */
+    fun lastSweep(ctx: Context) = cfg(ctx).getString("lastSweep", null)
+    fun setLastSweep(ctx: Context, v: String) = cfg(ctx).edit().putString("lastSweep", v).apply()
+
     /**
-     * 2.1 이하 스윕은 '중지'만 눌러도 완료로 찍혔다(2.2에서 고침). 그렇게 멈춘 폰은 2.2의 일괄 대조
-     * (스윕 안에서 돈다)도 영영 안 돌아 진행률이 새로 찍은 사진만큼만 올랐다(황하람 폰: 일주일간 2.9%).
-     * 업데이트 후 한 번만 스윕을 처음부터 다시 돌린다. 일괄 대조 덕에 몇 초면 끝난다.
+     * 업데이트 후 한 번만 스윕을 처음부터 다시 돌린다. 키를 바꾸면 그 버전에서 다시 한 번.
+     * - 2.3(staleSweepReset): 2.1 이하는 '중지'만 눌러도 완료로 찍혔다.
+     * - 2.5(sweepReset_v25): date_added가 NULL인 항목을 스윕이 통째로 건너뛰고 완료로 찍었다
+     *   (황하람 폰: 사진 22,804장이 대조 대상에서 빠져 진행률 897/23,701에 멈춤).
      */
     fun resetStaleSweepOnce(ctx: Context) {
-        if (cfg(ctx).getBoolean("staleSweepReset", false)) return
+        if (cfg(ctx).getBoolean("sweepReset_v25", false)) return
         resetSweep(ctx)
-        cfg(ctx).edit().putBoolean("staleSweepReset", true).apply()
+        cfg(ctx).edit().putBoolean("sweepReset_v25", true).apply()
     }
 
     // ---- 상태(UI 표시용) ----

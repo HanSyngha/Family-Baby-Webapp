@@ -46,15 +46,20 @@ class BackupApi(private val baseUrl: String, private val resolver: ContentResolv
         }
     }
 
-    /** 해시 중복 체크. 중복이면 true. */
-    fun isDuplicate(accessToken: String, hash: String): Boolean {
-        val body = JSONObject().put("hash", hash).toString().toRequestBody(jsonType)
-        val req = Request.Builder().url("$baseUrl/api/media/check-duplicate")
-            .header("Authorization", "Bearer $accessToken").post(body).build()
-        client.newCall(req).execute().use { res ->
-            if (!res.isSuccessful) return false
-            return JSONObject(res.body?.string() ?: "{}").optBoolean("duplicate", false)
-        }
+    /**
+     * 해시 중복 체크. 중복이면 true, 없으면 false, 확인 실패(네트워크·서버 오류)면 null.
+     * 실패를 false로 돌려주면 전체 대조가 '서버에 없음'으로 오인한다.
+     */
+    fun isDuplicate(accessToken: String, hash: String): Boolean? {
+        return try {
+            val body = JSONObject().put("hash", hash).toString().toRequestBody(jsonType)
+            val req = Request.Builder().url("$baseUrl/api/media/check-duplicate")
+                .header("Authorization", "Bearer $accessToken").post(body).build()
+            client.newCall(req).execute().use { res ->
+                if (!res.isSuccessful) null
+                else JSONObject(res.body?.string() ?: "{}").optBoolean("duplicate", false)
+            }
+        } catch (e: Exception) { null }
     }
 
     /**
@@ -84,13 +89,17 @@ class BackupApi(private val baseUrl: String, private val resolver: ContentResolv
         accessToken: String,
         photoTotal: Int, photoDone: Int,
         videoTotal: Int, videoDone: Int,
-        deviceName: String
+        deviceName: String,
+        diag: JSONObject
     ): Boolean {
         return try {
             val json = JSONObject()
                 .put("photoTotal", photoTotal).put("photoDone", photoDone)
                 .put("videoTotal", videoTotal).put("videoDone", videoDone)
                 .put("deviceName", deviceName)
+                // 진단용(서버 로그에만 남김): 앱 버전·대조 상태·마지막 대조 결과. 폰 안에서 조용히
+                // 실패하던 대조를 서버 쪽에서 볼 수 없어 원인 찾는 데 폰을 직접 연결해야 했다.
+                .put("diag", diag)
                 .toString().toRequestBody(jsonType)
             val req = Request.Builder().url("$baseUrl/api/backup/progress")
                 .header("Authorization", "Bearer $accessToken").post(json).build()
