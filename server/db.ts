@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { reconcilePeanutReferences } from './peanut-sync.js';
 
 const DATA_DIR = path.resolve('data');
 const DB_PATH = path.join(DATA_DIR, 'peanut-family.db');
@@ -1044,23 +1045,13 @@ function syncFromPeanut() {
 // 구앱에서 지운 사진을 가족 앱에서도 내린다.
 // 위 동기화는 추가만 따라가서, 친척이 올렸다 지운 사진이 가족 앱에 파일 없는 깨진 타일로 남았다
 // (2026-09-28 이수윤이 22:03에 올리고 22:07에 지운 2장). source='peanut' 행은 구앱 파일을 그대로 가리키므로
-// 구앱이 지우면 가족 쪽엔 되살릴 원본이 없다 — 구앱 DB에도 없고 파일도 없는 것만 지운다.
+// 구앱 DB에도 없고 파일도 없으면 같은 해시의 남은 원본으로 먼저 연결을 바꾼다.
+// 대체 원본까지 없는 것만 지운다.
 // 한꺼번에 많이 사라졌다면 삭제가 아니라 마운트 문제일 수 있으니 지우지 않고 로그만 남긴다.
-const PRUNE_LIMIT = 20;
 function pruneDeletedFromPeanut() {
   if (!peanutDb) return;
   try {
-    const theirs = new Set((peanutDb.prepare('SELECT filename FROM media').all() as { filename: string }[]).map(r => r.filename));
-    const gone = (db.prepare("SELECT id, filename, originalName FROM media WHERE source = 'peanut'").all() as { id: number; filename: string; originalName: string }[])
-      .filter(r => !theirs.has(r.filename) && !fs.existsSync(path.join(PEANUT_DATA_DIR, 'originals', r.filename)));
-    if (gone.length === 0) return;
-    if (gone.length > PRUNE_LIMIT) {
-      console.warn(`[Sync] 구앱에서 사라진 사진 ${gone.length}장 — ${PRUNE_LIMIT}장 초과라 마운트 이상일 수 있어 지우지 않음`);
-      return;
-    }
-    const del = db.prepare('DELETE FROM media WHERE id = ?');
-    db.transaction(() => { for (const r of gone) del.run(r.id); })();
-    console.log(`[Sync] 구앱에서 삭제된 ${gone.length}장 제거: ${gone.map(r => `${r.id}(${r.originalName})`).join(', ')}`);
+    reconcilePeanutReferences(db, peanutDb, PEANUT_DATA_DIR);
   } catch (err) {
     console.error('[Sync] Prune error:', err);
   }
